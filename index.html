@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>おりがみ 展開図シミュレーター</title>
+<style>
+:root{--bg:#eef1f4;--fg:#1d2630;--card:#fff;--mut:#5d6b78;--line:#d3dae1;--acc:#16808a;--front:#1f9aa5;--back:#f7f9fa;--m:#d6336c;--v:#2563eb;--f:#8a96a3;--sel:#f59e0b;--bad:#e03131;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12181e;--fg:#e8edf1;--card:#1b232b;--mut:#9aa8b4;--line:#2e3a45;--acc:#4cc2cc;--front:#1f9aa5;--back:#e9eef1;--m:#ff6b9d;--v:#6ea3ff;--f:#7d8a96;--sel:#fbbf24;--bad:#ff6b6b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12181e;--fg:#e8edf1;--card:#1b232b;--mut:#9aa8b4;--line:#2e3a45;--acc:#4cc2cc;--front:#1f9aa5;--back:#e9eef1;--m:#ff6b9d;--v:#6ea3ff;--f:#7d8a96;--sel:#fbbf24;--bad:#ff6b6b;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:12px}
+h1{font-size:22px;margin:0;letter-spacing:.04em}
+.lead{color:var(--mut);margin:0;flex:1 1 320px}
+.bar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-bottom:8px}
+.grp{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
+.gl{color:var(--mut);font-size:13px;margin-right:2px}
+button{font:inherit;font-size:14px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+select,input[type=number]{font:inherit;font-size:14px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 6px}
+input[type=number]{width:58px}
+.sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+.stage{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+@media (max-width:820px){.stage{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.panel h2{font-size:15px;margin:0 0 8px}
+svg.view{display:block;width:100%;height:auto;background:var(--bg);border-radius:8px;touch-action:none}
+#v3wrap{position:relative;width:100%;aspect-ratio:1/1;background:var(--bg);border-radius:8px;overflow:hidden}
+#v3wrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#v3wrap svg.view{position:absolute;inset:0;height:100%}
+input[type=checkbox]{accent-color:var(--acc);width:16px;height:16px}
+input[type=color]{width:38px;height:30px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer}
+details.note summary{cursor:pointer}
+svg.view *{vector-effect:non-scaling-stroke}
+#ed{cursor:crosshair}
+#v3{cursor:grab}
+.note{color:var(--mut);font-size:13px;margin:8px 0 0}
+.msg{font-size:13px;margin:8px 0 0;padding:6px 10px;border-radius:8px;background:var(--bg);display:none}
+.msg.on{display:block}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin-top:8px}
+.leg i{display:inline-block;width:26px;border-top:2px dashed;vertical-align:middle;margin-right:4px}
+.leg b{display:inline-block;width:10px;height:10px;border:2px solid var(--bad);border-radius:50%;vertical-align:middle;margin-right:4px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:10px}
+.ctl input[type=range]{flex:1 1 160px;min-width:120px}
+#mip{display:none}
+#mip.on{display:inline-flex}
+body.fs main{max-width:none;padding:10px 12px}
+body.fs .lead{display:none}
+body.fs svg.view,body.fs #v3wrap{height:calc(100vh - 330px);min-height:260px;aspect-ratio:auto}
+body.fs #v3wrap svg.view{height:100%}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <h1>おりがみ 展開図シミュレーター</h1>
+  <p class="lead">展開図に山折り・谷折りの線を引くと、右側で紙が立体的に折りたたまれます。</p>
+  <button id="bFS" aria-pressed="false">全画面</button>
+</div>
+
+<div class="bar">
+  <span class="grp" role="group" aria-label="道具"><span class="gl">道具</span>
+    <button data-tool="line" aria-pressed="true">線を引く</button><button data-tool="pt" aria-pressed="false">点を打つ</button><button data-tool="sel" aria-pressed="false">選択</button><button data-tool="erase" aria-pressed="false">消しゴム</button></span>
+  <span class="sep"></span>
+  <span class="grp" role="group" aria-label="線の種類"><span class="gl">線</span>
+    <button data-lt="M" aria-pressed="true">山折り</button><button data-lt="V" aria-pressed="false">谷折り</button><button data-lt="F" aria-pressed="false">折すじ</button>
+    <label class="grp"><span class="gl">折り角</span><input id="la" type="number" min="0" max="180" step="1" value="180">°</label></span>
+  <span class="sep"></span>
+  <label class="grp"><span class="gl">吸着</span><select id="div"><option value="-1">なし</option><option value="0">線の端と交点</option><option value="2">2等分</option><option value="3">3等分</option><option value="4" selected>4等分</option><option value="6">6等分</option><option value="8">8等分</option><option value="12">12等分</option><option value="16">16等分</option></select></label>
+  <label class="grp"><span class="gl">角度</span><select id="ang"><option value="0">自由</option><option value="15">15°ごと</option><option value="22.5" selected>22.5°ごと</option><option value="30">30°ごと</option><option value="45">45°ごと</option></select></label>
+</div>
+<div class="bar">
+  <span class="grp"><button id="bUndo">ひとつ戻す</button><button id="bRedo">やり直す</button><button id="bClr">すべて消す</button></span>
+  <span class="sep"></span>
+  <span class="grp" role="group" aria-label="選択"><span class="gl">選択</span><button id="bSA">全選択</button><button id="bSI">反選択</button><button id="bSC">解除</button><button id="bSD">削除</button></span>
+  <span class="grp" role="group" aria-label="選択した線を変える"><span class="gl">選択した線を</span><button data-to="M">山に</button><button data-to="V">谷に</button><button data-to="F">折すじに</button><button data-to="X">山谷を反転</button><button id="bSetA">折り角を上の値に</button></span>
+</div>
+<div class="bar">
+  <span class="grp" role="group" aria-label="表示"><span class="gl">表示</span><button id="zO">縮小</button><button id="zI">拡大</button><button id="zR">全体</button>
+    <input id="zs" type="range" min="100" max="800" step="5" value="100" style="width:90px" aria-label="倍率"><span id="zv">100%</span>
+    <select id="zk" aria-label="ホイールの感度"><option value="0.0004">ホイール 弱</option><option value="0.0008" selected>ホイール 標準</option><option value="0.0016">ホイール 強</option></select>
+    <button id="bPan" aria-pressed="false">移動</button></span>
+  <span class="sep"></span>
+  <span class="grp"><span class="gl">お手本</span><select id="pre"><option value="">選ぶ…</option><option value="half">半分</option><option value="tri">三角</option><option value="zab">ざぶとん</option><option value="jab">じゃばら</option><option value="wb">風船の基本形</option><option value="sq">正方基本形</option><option value="miura">ミウラ折り</option></select>
+    <span id="mip" class="grp"><label>列 <input id="miN" type="number" min="2" max="14" value="6"></label><label>行 <input id="miM" type="number" min="2" max="14" value="6"></label><label>角度 <input id="miG" type="number" min="40" max="85" value="65">°</label></span>
+    <button id="bLoad">展開図に読み込む</button></span>
+</div>
+<div class="bar">
+  <span class="grp" role="group" aria-label="ファイル"><span class="gl">ファイル</span><button id="bOpen">開く(SVG・FOLD)</button><input id="file" type="file" accept=".svg,.fold,.json,image/svg+xml,application/json" hidden>
+    <button id="bSaveSVG">SVGで保存</button><button id="bSaveFOLD">FOLDで保存</button></span>
+  <span class="note" id="fmsg" style="margin:0" role="status"></span>
+</div>
+
+<div class="stage">
+  <section class="panel">
+    <h2>展開図</h2>
+    <svg id="ed" class="view" viewBox="0 0 480 480" role="img" aria-label="展開図の編集"></svg>
+    <div class="leg"><span><i style="color:var(--m);border-top-style:dashed"></i>山折り</span><span><i style="color:var(--v)"></i>谷折り</span><span><i style="color:var(--f);border-top-style:dotted"></i>折すじ(折らない)</span><span><b></b>平らに折れない頂点</span></div>
+    <p class="note" id="hint"></p>
+  </section>
+  <section class="panel">
+    <h2>折りたたみ(3D)</h2>
+    <div id="v3wrap"><canvas id="gl" aria-label="折りたたんだ紙の3D表示"></canvas><svg id="v3" class="view" viewBox="0 0 480 480" role="img" aria-label="折りたたんだ紙の3D表示" hidden></svg></div>
+    <div class="ctl">
+      <label for="prog">折りの進み</label><input id="prog" type="range" min="0" max="100" value="0"><span id="progv">0%</span>
+    </div>
+    <div class="ctl">
+      <span class="grp"><button id="vTop">上から</button><button id="vIso">斜めから</button><button id="vFit">全体</button></span>
+      <label class="grp"><input id="showE" type="checkbox" checked>折り線</label><label class="grp"><input id="showS" type="checkbox" checked>影</label>
+    </div>
+    <div class="ctl">
+      <span class="grp" role="group" aria-label="紙の色"><span class="gl">紙の色</span><label class="grp">表 <input id="cF" type="color" value="#1f9aa5"></label><label class="grp">裏 <input id="cB" type="color" value="#f7f9fa"></label><button id="cR">色を戻す</button></span>
+    </div>
+    <p class="msg" id="msg"></p>
+    <p class="note" id="info"></p>
+    <p class="note">ドラッグで回転、右ドラッグで移動、ホイールで拡大・縮小します。面の重なりは計算しないため、平らに近づくと紙どうしが突き抜けて見えることがあります。</p>
+    <details class="note"><summary>ファイルの形式(Origami Simulator と同じ決まり)</summary>
+      <p>SVG は線の色で種類を見分けます。赤(#ff0000)=山折り、青(#0000ff)=谷折り、黒(#000000)=紙のふち、黄(#ffff00)と紫(#ff00ff)=折すじ。山折り・谷折りの線の不透明度が折り角で、1 なら 180°、0.5 なら 90° です。緑(#00ff00)の切り込みには対応していません。</p>
+      <p>FOLD は vertices_coords・edges_vertices・edges_assignment・edges_foldAngle を読みます。保存したファイルの名前は .fold.json になるので、Origami Simulator で開くときは末尾を .fold に変えてください。</p></details>
+  </section>
+</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ===== 折りたたみエンジン(展開図 → 面 → 3D) =====
+const ENG=(()=>{
+const E=1e-7;
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+ crs=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],len=a=>Math.hypot(a[0],a[1],a[2]);
+// 線分同士の交点(パラメータ t のリスト)
+function cutParams(A,B,segs){const ts=[0,1],dx=B[0]-A[0],dy=B[1]-A[1],L2=dx*dx+dy*dy;
+ for(const s of segs){const ex=s.b[0]-s.a[0],ey=s.b[1]-s.a[1],den=dx*ey-dy*ex,wx=s.a[0]-A[0],wy=s.a[1]-A[1];
+  if(Math.abs(den)<1e-12*Math.sqrt(L2*(ex*ex+ey*ey))){ // 平行
+   if(Math.abs(wx*dy-wy*dx)/Math.sqrt(L2)>1e-6)continue;
+   for(const p of[s.a,s.b]){const t=((p[0]-A[0])*dx+(p[1]-A[1])*dy)/L2;if(t>-1e-9&&t<1+1e-9)ts.push(t)}
+   continue}
+  const t=(wx*ey-wy*ex)/den,u=(wx*dy-wy*dx)/den,tt=1e-7/Math.sqrt(L2),tu=1e-7/Math.sqrt(ex*ex+ey*ey);
+  if(t>-tt&&t<1+tt&&u>-tu&&u<1+tu)ts.push(Math.min(1,Math.max(0,t)))}
+ return ts.sort((a,b)=>a-b)}
+const PR={B:4,M:3,V:3,F:2};
+function build(lines){ // lines: {a:[x,y],b:[x,y],t:'M'|'V'|'F'} 単位正方形
+ // ふち(B)の線があればそれを紙の形に、なければ正方形
+ const hasB=lines.some(l=>l.t==='B');
+ const segs=hasB?[]:[{a:[0,0],b:[1,0],t:'B'},{a:[1,0],b:[1,1],t:'B'},{a:[1,1],b:[0,1],t:'B'},{a:[0,1],b:[0,0],t:'B'}];
+ for(const l of lines)if(Math.hypot(l.b[0]-l.a[0],l.b[1]-l.a[1])>1e-6)segs.push(l);
+ const P=[],key=new Map(),vid=p=>{const k=Math.round(p[0]*1e5)+','+Math.round(p[1]*1e5);
+   if(key.has(k))return key.get(k);
+   for(let i=0;i<P.length;i++)if(Math.hypot(P[i][0]-p[0],P[i][1]-p[1])<2e-5){key.set(k,i);return i}
+   P.push([p[0],p[1]]);key.set(k,P.length-1);return P.length-1};
+ const ed=new Map();
+ for(const s of segs){const ts=cutParams(s.a,s.b,segs);let prev=null;
+  for(const t of ts){const id=vid([s.a[0]+t*(s.b[0]-s.a[0]),s.a[1]+t*(s.b[1]-s.a[1])]);
+   if(prev!==null&&prev!==id){const k=Math.min(prev,id)+'_'+Math.max(prev,id),o=ed.get(k);
+    if(!o||PR[s.t]>PR[o.t])ed.set(k,{u:Math.min(prev,id),v:Math.max(prev,id),t:s.t,ang:s.ang===undefined?180:s.ang})}
+   prev=id}}
+ let edges=[...ed.values()];
+ // 端がどこにもつながらない折り線を取り除く
+ let pruned=0;const prunedSeg=[],prunedE=[];for(;;){const dg=new Array(P.length).fill(0);for(const e of edges){dg[e.u]++;dg[e.v]++}
+  const keep=[];for(const e of edges){if(e.t==='B'||(dg[e.u]>1&&dg[e.v]>1))keep.push(e);else{prunedE.push(e);if(e.t!=='F'){prunedSeg.push([P[e.u],P[e.v]]);pruned++}}}
+  if(keep.length===edges.length)break;edges=keep}
+ // 面を求める
+ const nb=P.map(()=>[]);for(const e of edges){nb[e.u].push(e.v);nb[e.v].push(e.u)}
+ nb.forEach((l,i)=>l.sort((a,b)=>Math.atan2(P[a][1]-P[i][1],P[a][0]-P[i][0])-Math.atan2(P[b][1]-P[i][1],P[b][0]-P[i][0])));
+ const seen=new Set(),faces=[],hf=new Map();
+ for(const e of edges)for(const[s0,s1]of[[e.u,e.v],[e.v,e.u]]){if(seen.has(s0+'>'+s1))continue;
+  const f=[];let u=s0,v=s1,guard=0;
+  while(!seen.has(u+'>'+v)&&guard++<10000){seen.add(u+'>'+v);f.push(u);const l=nb[v],i=l.indexOf(u),w=l[(i-1+l.length)%l.length];u=v;v=w}
+  let a=0;for(let i=0;i<f.length;i++){const p=P[f[i]],q=P[f[(i+1)%f.length]];a+=p[0]*q[1]-q[0]*p[1]}
+  if(a>1e-10){for(let i=0;i<f.length;i++)hf.set(f[i]+'>'+f[(i+1)%f.length],faces.length);faces.push(f)}}
+ // かたい紙用: 折り線ごとの両側の面、内部頂点ごとの折り線の並び
+ const cre=[],cidx=new Map();
+ for(const e of edges){const L=hf.get(e.u+'>'+e.v),R=hf.get(e.v+'>'+e.u);if(e.t==='B'||L===undefined||R===undefined)continue;
+  cidx.set(e.u+'_'+e.v,cre.length);cre.push({u:e.u,v:e.v,t:e.t,L,R,th:0,A:(e.t==='M'||e.t==='V')?Math.min(179,Math.max(0,e.ang))*Math.PI/180:0})}
+ const bset=new Set();for(const e of edges)if(e.t==='B'){bset.add(e.u);bset.add(e.v)}
+ const ivs=[];
+ for(let i=0;i<P.length;i++){const p=P[i];if(bset.has(i))continue;
+  if(!nb[i].length)continue;
+  const rays=[...nb[i]].reverse().map(o=>{const c=cidx.get(Math.min(i,o)+'_'+Math.max(i,o));if(c===undefined)return null;
+   const d=[P[o][0]-p[0],P[o][1]-p[1]],L=Math.hypot(d[0],d[1]);return{c,o,d:[d[0]/L,d[1]/L,0],B:hf.get(i+'>'+o)}});
+  if(rays.some(r=>!r))continue;
+  // nb は角度の昇順。CCW 順(=面をたどる向き)に並べ替え
+  rays.sort((a,b)=>Math.atan2(a.d[1],a.d[0])-Math.atan2(b.d[1],b.d[0]));
+  ivs.push({v:i,rays,A0:hf.get(i+'>'+rays[rays.length-1].o)})}
+ // 三角形分割
+ const tris=[],triF=[];faces.forEach((f,fi)=>{for(const t of earcut(f,P)){tris.push(t);triF.push(fi)}});
+ const etype=new Map(edges.map(e=>[e.u+'_'+e.v,e.t]));
+ // ばねとヒンジ
+ const tm=new Map();
+ tris.forEach(([a,b,c],ti)=>{for(const[i,j,k]of[[a,b,c],[b,c,a],[c,a,b]]){const kk=Math.min(i,j)+'_'+Math.max(i,j);if(!tm.has(kk))tm.set(kk,[]);tm.get(kk).push({i,j,k})}});
+ const bars=[],hinges=[];
+ for(const[kk,l]of tm){const[u,v]=kk.split('_').map(Number);bars.push([u,v,Math.hypot(P[u][0]-P[v][0],P[u][1]-P[v][1])]);
+  if(l.length===2){const t=etype.get(kk)||'f',h1=l[0],h2=l[1];// h1: i→j の左に k
+   const ci=cidx.has(kk)?cidx.get(kk):-1;hinges.push({i:h1.i,j:h1.j,k:h1.k,l:h2.k,t,ci,A:ci>=0?cre[ci].A:0,th:0,L:Math.hypot(P[u][0]-P[v][0],P[u][1]-P[v][1])})}}
+ // 平らに折れるかの判定(前川・川崎)
+ const bad=[];
+ for(let i=0;i<P.length;i++){const p=P[i];if(bset.has(i))continue;
+  const cs=edges.filter(e=>(e.u===i||e.v===i)&&(e.t==='M'||e.t==='V'));if(!cs.length)continue;
+  const an=cs.map(e=>{const o=e.u===i?e.v:e.u;return{a:Math.atan2(P[o][1]-p[1],P[o][0]-p[0]),t:e.t}}).sort((x,y)=>x.a-y.a);
+  const m=an.filter(x=>x.t==='M').length,vv=an.length-m;let ks=0;
+  const sec=an.map((x,j)=>(j+1<an.length?an[j+1].a:an[0].a+2*Math.PI)-x.a);
+  sec.forEach((d,j)=>{ks+=(j%2?-1:1)*d});
+  // 大小大の法則: 両隣より小さい角をはさむ2本は、山と谷が逆
+  let blb=false;const n=an.length;
+  if(n>=4)for(let j=0;j<n;j++){const s=sec[j],sp=sec[(j-1+n)%n],sn=sec[(j+1)%n];if(s<sp-1e-6&&s<sn-1e-6&&an[j].t===an[(j+1)%n].t)blb=true}
+  const why=n%2?'odd':Math.abs(m-vv)!==2?'maekawa':Math.abs(ks)>1e-4?'kawasaki':blb?'blb':null;
+  if(why)bad.push({v:i,why})}
+ return{P,edges,faces,tris,triF,bars,hinges,pruned,prunedSeg,prunedE,bad,cre,ivs,hf,bset}}
+function earcut(f,P){const idx=[...f],out=[];
+ const cr=(a,b,c)=>(P[b][0]-P[a][0])*(P[c][1]-P[a][1])-(P[b][1]-P[a][1])*(P[c][0]-P[a][0]);
+ const inT=(p,a,b,c)=>{const d1=cr(a,b,p),d2=cr(b,c,p),d3=cr(c,a,p);return d1>=-1e-12&&d2>=-1e-12&&d3>=-1e-12};
+ let guard=0;
+ while(idx.length>3&&guard++<5000){let cut=false;
+  for(let n=0;n<idx.length;n++){const a=idx[(n-1+idx.length)%idx.length],b=idx[n],c=idx[(n+1)%idx.length];
+   if(cr(a,b,c)<=1e-12)continue;let ok=true;
+   for(const q of idx){if(q===a||q===b||q===c)continue;if(inT(q,a,b,c)){ok=false;break}}
+   if(ok){out.push([a,b,c]);idx.splice(n,1);cut=true;break}}
+  if(!cut)break}
+ if(idx.length===3){if(cr(idx[0],idx[1],idx[2])>1e-12)out.push(idx)}
+ else if(idx.length>3)for(let n=1;n+1<idx.length;n++)if(cr(idx[0],idx[n],idx[n+1])>1e-12)out.push([idx[0],idx[n],idx[n+1]]);
+ return out}
+// 状態
+function init(m){m.X=m.P.map(p=>[p[0],p[1],0]);m.Vel=m.P.map(()=>[0,0,0]);m.hinges.forEach(h=>h.th=0);
+ let kmax=0;for(const b of m.bars)kmax=Math.max(kmax,KA/b[2]);m.dt=.5/Math.sqrt(kmax*Math.max(1,maxDeg(m)))}
+function maxDeg(m){const d=new Array(m.P.length).fill(0);for(const b of m.bars){d[b[0]]++;d[b[1]]++}return Math.max(...d)}
+const KA=120,KC=1.2,KF=40,KS=.15,DAMP=.06;
+function angle(X,h){const pi=X[h.i],pj=X[h.j],e=sub(pj,pi),el=len(e)||1e-12,
+ N1=crs(e,sub(X[h.k],pi)),N2=crs(sub(X[h.l],pi),e),n1=len(N1)||1e-12,n2=len(N2)||1e-12,
+ c=dot(N1,N2)/(n1*n2),s=dot(crs(N1,N2),e)/(n1*n2*el);
+ let raw=Math.atan2(s,c),d=raw-h.th;d-=2*Math.PI*Math.round(d/(2*Math.PI));return{th:h.th+d,e,el,N1,N2,n1,n2}}
+// 1ステップ。target: 折りの進み(0〜1)。各線の目標角 = 線の折り角 × target
+function step(m,target,n){const X=m.X,Vl=m.Vel,dt=m.dt;let mv=0;
+ for(let it=0;it<n;it++){const F=X.map(()=>[0,0,0]);
+  for(const[u,v,L0]of m.bars){const d=sub(X[v],X[u]),L=len(d)||1e-12,f=KA/L0*(L-L0)/L;
+   for(let a=0;a<3;a++){F[u][a]+=f*d[a];F[v][a]-=f*d[a]}}
+  for(const h of m.hinges){const g=angle(X,h);h.th=g.th;
+   const tg=(m.hyb&&h.ci>=0)?m.cre[h.ci].th:h.t==='V'?h.A*target:h.t==='M'?-h.A*target:0,k=(h.t==='f'?KF:h.t==='F'?KS:KC)*h.L,tau=-k*(g.th-tg);
+   const pi=X[h.i],pj=X[h.j],e=g.e,el=g.el,
+    gk=g.N1.map(x=>-x*el/(g.n1*g.n1)),gl=g.N2.map(x=>-x*el/(g.n2*g.n2)),
+    tk=dot(sub(X[h.k],pi),e)/(el*el),tl=dot(sub(X[h.l],pi),e)/(el*el);
+   // θ の勾配: k, l とヒンジ両端
+   const gi=[0,1,2].map(a=>-(1-tk)*gk[a]-(1-tl)*gl[a]),gj=[0,1,2].map(a=>-tk*gk[a]-tl*gl[a]);
+   for(let a=0;a<3;a++){F[h.k][a]+=tau*gk[a];F[h.l][a]+=tau*gl[a];F[h.i][a]+=tau*gi[a];F[h.j][a]+=tau*gj[a]}}
+  mv=0;for(let i=0;i<X.length;i++)for(let a=0;a<3;a++){Vl[i][a]=(Vl[i][a]+F[i][a]*dt)*(1-DAMP);const dx=Vl[i][a]*dt;X[i][a]+=dx;mv=Math.max(mv,Math.abs(dx))}}
+ // 重心を原点付近に保つ
+ return mv}
+// ===== かたい紙(剛体折り紙): 折り角を変数にして、内部頂点まわりの回転が閉じるように動かす =====
+const KAP=-1; // 谷折り(θ>0)で手前(内部座標 -z)へ
+function rotM(a,ang){const c=Math.cos(ang),s=Math.sin(ang),[x,y,z]=a;return[[c+(1-c)*x*x,(1-c)*x*y-s*z,(1-c)*x*z+s*y],[(1-c)*x*y+s*z,c+(1-c)*y*y,(1-c)*y*z-s*x],[(1-c)*x*z-s*y,(1-c)*y*z+s*x,c+(1-c)*z*z]]}
+const mm=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j])),mvec=(A,x)=>A.map(r=>r[0]*x[0]+r[1]*x[1]+r[2]*x[2]);
+// 面ごとの位置(回転 R と平行移動 t: x' = R x + t)
+function pose(m){const nf=m.faces.length,T=new Array(nf),adj=m.faces.map(()=>[]);
+ for(const c of m.cre){adj[c.L].push(c);adj[c.R].push(c)}
+ // 中央に近い面を基準に
+ let r0=0,bd=1e9;m.faces.forEach((f,i)=>{const cx=f.reduce((s,k)=>s+m.P[k][0],0)/f.length-.5,cy=f.reduce((s,k)=>s+m.P[k][1],0)/f.length-.5,d=cx*cx+cy*cy;if(d<bd){bd=d;r0=i}});
+ T[r0]={R:[[1,0,0],[0,1,0],[0,0,1]],t:[0,0,0]};const q=[r0];
+ while(q.length){const a=q.shift(),Ta=T[a];
+  for(const c of adj[a]){const b=c.L===a?c.R:c.L;if(T[b])continue;
+   // b が左にくる向きの軸
+   const[p0,p1]=c.L===b?[c.u,c.v]:[c.v,c.u],P0=m.P[p0],P1=m.P[p1],dl=Math.hypot(P1[0]-P0[0],P1[1]-P0[1]),ax=[(P1[0]-P0[0])/dl,(P1[1]-P0[1])/dl,0];
+   const Rr=rotM(ax,KAP*c.th),p3=[P0[0],P0[1],0],rp=mvec(Rr,p3),tr=[p3[0]-rp[0],p3[1]-rp[1],-rp[2]],Rt=mvec(Ta.R,tr);
+   T[b]={R:mm(Ta.R,Rr),t:[Rt[0]+Ta.t[0],Rt[1]+Ta.t[1],Rt[2]+Ta.t[2]]};q.push(b)}}
+ for(let i=0;i<nf;i++)if(!T[i])T[i]={R:[[1,0,0],[0,1,0],[0,0,1]],t:[0,0,0]};
+ m.T=T;return T}
+function rstep(m,tgt,iters){const C=m.cre,nc=C.length;if(!nc){pose(m);return{left:0,res:0}}
+ let left=0,res=0;
+ for(let it=0;it<iters;it++){const T=pose(m);
+  // ヤコビアン(頂点ごとに 3 行)と閉じ残り
+  const d=C.map(c=>{const g=c.t==='V'?c.A*tgt:c.t==='M'?-c.A*tgt:0,w=c.t==='F'?.05:1,dd=(g-c.th)*w;return Math.max(-.035,Math.min(.035,dd))});
+  let nnz=0;for(const iv of m.ivs)nnz+=3*iv.rays.length;
+  const nr=3*m.ivs.length,rs=new Int32Array(nr+1),ci=new Int32Array(nnz),gv=new Float64Array(nnz),rhs=new Float64Array(nr);res=0;let k=0,row=0;
+  for(const iv of m.ivs){let Rc=[[1,0,0],[0,1,0],[0,0,1]];for(const r of iv.rays)Rc=mm(Rc,rotM(r.d,KAP*C[r.c].th));
+   const W0=T[iv.A0].R,rl=[.5*(Rc[2][1]-Rc[1][2]),.5*(Rc[0][2]-Rc[2][0]),.5*(Rc[1][0]-Rc[0][1])],rw=mvec(W0,rl);
+   const gs=iv.rays.map(r=>mvec(T[r.B].R,r.d));
+   for(let a=0;a<3;a++){rs[row]=k;let jd=0;iv.rays.forEach((r,q)=>{const g=KAP*gs[q][a];ci[k]=r.c;gv[k]=g;k++;jd+=g*d[r.c]});rhs[row]=-(jd+rw[a]);res=Math.max(res,Math.abs(rw[a]));row++}}
+  rs[nr]=k;
+  // (J Jᵀ + λI) y = rhs を共役勾配法で
+  const lam=1e-5,tmp=new Float64Array(nc),Ap=new Float64Array(nr);
+  const Jt=(y,o)=>{o.fill(0);for(let q=0;q<nr;q++){const yq=y[q];for(let z=rs[q];z<rs[q+1];z++)o[ci[z]]+=gv[z]*yq}return o};
+  const A=(y,o)=>{Jt(y,tmp);for(let q=0;q<nr;q++){let s=0;for(let z=rs[q];z<rs[q+1];z++)s+=gv[z]*tmp[ci[z]];o[q]=s+lam*y[q]}return o};
+  const y=new Float64Array(nr),r=Float64Array.from(rhs),p=Float64Array.from(r);let rr=0;for(let q=0;q<nr;q++)rr+=r[q]*r[q];const tol=Math.max(1e-26,rr*1e-14);
+  for(let it2=0;it2<300&&rr>tol;it2++){A(p,Ap);let pAp=0;for(let q=0;q<nr;q++)pAp+=p[q]*Ap[q];if(pAp<=0)break;const al=rr/pAp;
+   let r2=0;for(let q=0;q<nr;q++){y[q]+=al*p[q];r[q]-=al*Ap[q];r2+=r[q]*r[q]}const be=r2/rr;rr=r2;for(let q=0;q<nr;q++)p[q]=r[q]+be*p[q]}
+  const jt=Jt(y,new Float64Array(nc));let mx=0;const dt=C.map((c,i)=>{const v=d[i]+jt[i];mx=Math.max(mx,Math.abs(v));return v});
+  const sc=mx>.06?.06/mx:1;C.forEach((c,i)=>{c.th=Math.max(-Math.PI,Math.min(Math.PI,c.th+dt[i]*sc))});
+  left=0;for(const c of C){const g=c.t==='V'?c.A*tgt:c.t==='M'?-c.A*tgt:c.th;left=Math.max(left,Math.abs(g-c.th))}
+  m.moved=mx*sc;if((left<1e-4||mx*sc<2e-5)&&res<1e-6)break}
+ pose(m);return{left,res,moved:m.moved}}
+function rinit(m){m.cre.forEach(c=>c.th=0);pose(m)}
+// 面の 3D 頂点
+function facePts(m,fi){const T=m.T[fi];return m.faces[fi].map(k=>{const p=[m.P[k][0],m.P[k][1],0],w=mvec(T.R,p);return[w[0]+T.t[0],w[1]+T.t[1],w[2]+T.t[2]]})}
+function strain(m){let s=0;for(const[u,v,L0]of m.bars)s=Math.max(s,Math.abs(len(sub(m.X[v],m.X[u]))-L0)/L0);return s}
+return{build,init,step,angle,strain,rstep,rinit,pose,facePts}})();
+// ===== 画面 =====
+const $=id=>document.getElementById(id);
+const S=400,O=40,f1=v=>v.toFixed(1);
+let lines=[],pts=[],undo=[],redo=[],sel={l:new Set(),p:new Set()};
+let la=180,tool='line',lt='M',div=4,angStep=22.5,vx=0,vy=0,vw=480,zoom=1,pan=false,zk=.0008,drag=null,hover=null;
+let iters=0,lastT=-1,model=null,mode='rigid',prog=0,yaw=-.5,tilt=1.0,zoom3=1,running=false,anim=false,animT0=0,lastWarn='';
+const NOW=()=>(typeof performance!=='undefined'?performance.now():Date.now());
+// ---- 保存(この端末のブラウザだけ) ----
+function save(){try{localStorage.setItem('origami-cp-v1',JSON.stringify({lines,pts}))}catch(e){}}
+function loadSaved(){try{const s=JSON.parse(localStorage.getItem('origami-cp-v1')||'null');if(s&&Array.isArray(s.lines)){lines=s.lines.filter(l=>l&&l.a&&l.b&&'MVFB'.includes(l.t));pts=Array.isArray(s.pts)?s.pts:[];return true}}catch(e){}return false}
+// ---- 変更の記録 ----
+const snap=()=>JSON.stringify({lines,pts});
+function push(){undo.push(snap());if(undo.length>200)undo.shift();redo=[]}
+function restore(s){const o=JSON.parse(s);lines=o.lines;pts=o.pts;sel={l:new Set(),p:new Set()};changed()}
+function changed(){save();cache();rebuild();drawEd()}
+// ---- 幾何 ----
+function clipSq(a,b){let t0=0,t1=1;const dx=b[0]-a[0],dy=b[1]-a[1];
+ for(const[p,q]of[[-dx,a[0]],[dx,1-a[0]],[-dy,a[1]],[dy,1-a[1]]]){if(Math.abs(p)<1e-12){if(q<0)return null}else{const r=q/p;if(p<0)t0=Math.max(t0,r);else t1=Math.min(t1,r)}}
+ if(t1-t0<1e-9)return null;return[[a[0]+t0*dx,a[1]+t0*dy],[a[0]+t1*dx,a[1]+t1*dy]]}
+function segX(a,b,c,d){const r=[b[0]-a[0],b[1]-a[1]],s=[d[0]-c[0],d[1]-c[1]],den=r[0]*s[1]-r[1]*s[0];if(Math.abs(den)<1e-12)return null;
+ const w=[c[0]-a[0],c[1]-a[1]],t=(w[0]*s[1]-w[1]*s[0])/den,u=(w[0]*r[1]-w[1]*r[0])/den;if(t<-1e-9||t>1+1e-9||u<-1e-9||u>1+1e-9)return null;return[a[0]+t*r[0],a[1]+t*r[1]]}
+function dSeg(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy||1e-18,t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
+let CAND=[];
+function cache(){const m=new Map(),add=p=>{if(p[0]<-1e-9||p[1]<-1e-9||p[0]>1+1e-9||p[1]>1+1e-9)return;const k=Math.round(p[0]*1e6)+','+Math.round(p[1]*1e6);if(!m.has(k))m.set(k,[p[0],p[1]])};
+ for(const c of[[0,0],[1,0],[1,1],[0,1]])add(c);
+ if(div>0)for(let i=0;i<=div;i++)for(let j=0;j<=div;j++)add([i/div,j/div]);
+ const B=[[[0,0],[1,0]],[[1,0],[1,1]],[[1,1],[0,1]],[[0,1],[0,0]]];
+ if(div>=0){for(const l of lines){add(l.a);add(l.b);add([(l.a[0]+l.b[0])/2,(l.a[1]+l.b[1])/2])}
+  for(let i=0;i<lines.length;i++){for(let j=i+1;j<lines.length;j++){const x=segX(lines[i].a,lines[i].b,lines[j].a,lines[j].b);if(x)add(x)}
+   for(const[a,b]of B){const x=segX(lines[i].a,lines[i].b,a,b);if(x)add(x)}}
+  for(const p of pts)add(p)}
+ CAND=[...m.values()]}
+// ---- 座標変換 ----
+const ED=$('ed'),V3=$('v3');
+function svgPt(svg,e){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const r=p.matrixTransform(svg.getScreenCTM().inverse());return[r.x,r.y]}
+const toU=q=>[(q[0]-O)/S,(q[1]-O)/S],toS=u=>[O+u[0]*S,O+u[1]*S];
+function pxU(){const c=ED.getScreenCTM();return 1/((c?c.a:1)*S)} // 画面1pxが紙の何単位か
+function nearest(u,tol){let best=null,bd=tol;for(const q of CAND){const d=Math.hypot(q[0]-u[0],q[1]-u[1]);if(d<bd){bd=d;best=q}}return best}
+function snapEnd(a,raw,tol){
+ if(angStep>0&&a){const dx=raw[0]-a[0],dy=a[1]-raw[1];if(Math.hypot(dx,dy)<1e-9)return{p:raw,s:false};
+  const st=angStep*Math.PI/180,th=Math.round(Math.atan2(dy,dx)/st)*st,dir=[Math.cos(th),-Math.sin(th)],t=Math.max(0,(raw[0]-a[0])*dir[0]+(raw[1]-a[1])*dir[1]),e=[a[0]+t*dir[0],a[1]+t*dir[1]];
+  // 線の上にある吸着点
+  let best=null,bd=tol;for(const q of CAND){const w=[q[0]-a[0],q[1]-a[1]],tt=w[0]*dir[0]+w[1]*dir[1];if(tt<=1e-9)continue;if(Math.abs(w[0]*dir[1]-w[1]*dir[0])>1e-7)continue;const d=Math.abs(tt-t);if(d<bd){bd=d;best=q}}
+  // ほかの線や紙のふちとの交点
+  const far=[a[0]+dir[0]*3,a[1]+dir[1]*3],segs=lines.map(l=>[l.a,l.b]).concat([[[0,0],[1,0]],[[1,0],[1,1]],[[1,1],[0,1]],[[0,1],[0,0]]]);
+  for(const[s0,s1]of segs){const x=segX(a,far,s0,s1);if(!x)continue;const tt=(x[0]-a[0])*dir[0]+(x[1]-a[1])*dir[1];if(tt<=1e-6)continue;const d=Math.abs(tt-t);if(d<bd){bd=d;best=x}}
+  if(best)return{p:best,s:true};const c=clipSq(a,e);return{p:c?c[1]:e,s:false}}
+ if(div<0)return{p:raw,s:false};const q=nearest(raw,tol);return q?{p:q,s:true}:{p:raw,s:false}}
+function hitAt(u,tol){let best=null,bd=tol;
+ pts.forEach((p,i)=>{const d=Math.hypot(p[0]-u[0],p[1]-u[1]);if(d<bd){bd=d;best={k:'p',i}}});
+ lines.forEach((l,i)=>{const d=dSeg(u,l.a,l.b);if(d<bd*.9){bd=d;best={k:'l',i}}});return best}
+// ---- 展開図の描画 ----
+const COL={M:'var(--m)',V:'var(--v)',F:'var(--f)',B:'var(--fg)'},DASH={M:'9 3 2 3',V:'6 4',F:'2 3',B:'none'};
+function drawEd(){ED.setAttribute('viewBox',`${f1(vx)} ${f1(vy)} ${f1(vw)} ${f1(vw)}`);$('zs').value=zoom*100;$('zv').textContent=Math.round(zoom*100)+'%';
+ const k=1/zoom,cut=lines.some(l=>l.t==='B');let h='';
+ if(!cut)h=`<rect x="${O}" y="${O}" width="${S}" height="${S}" fill="var(--back)" stroke="var(--fg)" stroke-width="1.6"/>`;
+ else{h=`<rect x="${O}" y="${O}" width="${S}" height="${S}" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>`;if(model)for(const f of model.faces)h+=`<polygon points="${f.map(i=>toS(model.P[i]).map(f1).join(',')).join(' ')}" fill="var(--back)"/>`}
+ if(div>0)for(let i=0;i<=div;i++)for(let j=0;j<=div;j++){const s=toS([i/div,j/div]);h+=`<circle cx="${f1(s[0])}" cy="${f1(s[1])}" r="${f1(1.6*k)}" fill="var(--fg)" opacity=".22"/>`}
+ if(model)for(const[a,b]of model.prunedSeg){const p=toS(a),q=toS(b);h+=`<line x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(q[0])}" y2="${f1(q[1])}" stroke="var(--bad)" stroke-width="7" opacity=".18" stroke-linecap="round"/>`}
+ lines.forEach((l,i)=>{const p=toS(l.a),q=toS(l.b),s=sel.l.has(i);
+  if(s)h+=`<line x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(q[0])}" y2="${f1(q[1])}" stroke="var(--sel)" stroke-width="6" opacity=".55" stroke-linecap="round"/>`;
+  h+=`<line x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(q[0])}" y2="${f1(q[1])}" stroke="${COL[l.t]}" stroke-width="${l.t==='F'?1.2:l.t==='B'?1.6:2}" stroke-dasharray="${DASH[l.t]}" opacity="${(l.t==='M'||l.t==='V')?(.35+.65*(l.ang===undefined?180:l.ang)/180).toFixed(2):1}"/>`});
+ pts.forEach((p,i)=>{const s=toS(p);h+=`<circle cx="${f1(s[0])}" cy="${f1(s[1])}" r="${f1((sel.p.has(i)?5:3.5)*k)}" fill="${sel.p.has(i)?'var(--sel)':'var(--acc)'}"/>`});
+ if(model)for(const b of model.bad){const s=toS(model.P[b.v]);h+=`<circle cx="${f1(s[0])}" cy="${f1(s[1])}" r="${f1(7*k)}" fill="none" stroke="var(--bad)" stroke-width="2"><title>${WHY[b.why]}</title></circle>`}
+ if(hover&&!drag){const s=toS(hover);h+=`<circle cx="${f1(s[0])}" cy="${f1(s[1])}" r="${f1(6*k)}" fill="none" stroke="var(--acc)" stroke-width="1.5"/>`}
+ if(drag&&drag.k==='line'){const p=toS(drag.a),q=toS(drag.b);
+  h+=`<line x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(q[0])}" y2="${f1(q[1])}" stroke="${COL[lt]}" stroke-width="2.4" stroke-dasharray="${DASH[lt]}"/>`;
+  h+=`<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${f1(4.5*k)}" fill="var(--acc)"/><circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(4.5*k)}" fill="${drag.s?'var(--acc)':'none'}" stroke="var(--acc)" stroke-width="1.5"/>`;
+  const dx=drag.b[0]-drag.a[0],dy=drag.a[1]-drag.b[1],L=Math.hypot(dx,dy);
+  if(L>1e-4){const e=Math.atan2(dy,dx),th=((e*180/Math.PI)%180+180)%180,r=34*k;
+   h+=`<path d="M${f1(p[0]+r)} ${f1(p[1])}A${f1(r)} ${f1(r)} 0 0 ${e<0?1:0} ${f1(p[0]+r*Math.cos(e))} ${f1(p[1]-r*Math.sin(e))}" fill="none" stroke="var(--acc)" stroke-width="1.5"/><line x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(p[0]+r*1.3)}" y2="${f1(p[1])}" stroke="var(--acc)" stroke-width="1" opacity=".6"/>`;
+   h+=`<text x="${f1(q[0]+9*k)}" y="${f1(q[1]-9*k)}" font-size="${f1(13*k)}" fill="var(--fg)" stroke="var(--bg)" stroke-width="3" paint-order="stroke">${th.toFixed(1)}° 長さ ${L.toFixed(3)}</text>`}}
+ if(drag&&drag.k==='box'){const x0=Math.min(drag.a[0],drag.b[0]),y0=Math.min(drag.a[1],drag.b[1]),p=toS([x0,y0]);
+  h+=`<rect x="${f1(p[0])}" y="${f1(p[1])}" width="${f1(Math.abs(drag.b[0]-drag.a[0])*S)}" height="${f1(Math.abs(drag.b[1]-drag.a[1])*S)}" fill="var(--sel)" opacity=".15" stroke="var(--sel)" stroke-width="1"/>`}
+ ED.innerHTML=h;
+ $('bUndo').disabled=!undo.length;$('bRedo').disabled=!redo.length;
+ $('hint').textContent=HINT[tool]}
+const HINT={line:'ドラッグで線を引きます。角度と長さが表示され、吸着点や「角度」の刻みに合わせて止まります。',pt:'クリックした位置に点を打ちます。点は線を引くときの吸着点になります。',sel:'クリックで線や点を選び、ドラッグで囲んだものをまとめて選びます。もう一度クリックすると解除されます。',erase:'クリック、またはなぞった線と点を消します。'};
+const WHY={odd:'折り線が奇数本です',maekawa:'山と谷の本数の差が2ではありません(前川定理)',kawasaki:'1つおきの角の和が180°ではありません(川崎定理)',blb:'両隣より小さい角をはさむ2本が同じ種類です(大小大の法則)'};
+// ---- 展開図の操作 ----
+ED.addEventListener('pointerdown',e=>{if(e.button>0&&e.pointerType==='mouse'&&e.button!==1)return;ED.setPointerCapture(e.pointerId);const s=svgPt(ED,e),u=toU(s),tol=12*pxU();
+ if(pan||e.button===1){drag={k:'pan',s,ox:vx,oy:vy,c:ED.getScreenCTM().a,x:e.clientX,y:e.clientY};return}
+ if(tool==='line'){const a=div<0?u:(nearest(u,tol)||u);drag={k:'line',a,b:a,s:false}}
+ else if(tool==='pt'){const q=div<0?u:(nearest(u,tol)||u);if(q[0]>=-1e-9&&q[1]>=-1e-9&&q[0]<=1+1e-9&&q[1]<=1+1e-9){push();pts.push([Math.min(1,Math.max(0,q[0])),Math.min(1,Math.max(0,q[1]))]);changed()}}
+ else if(tool==='sel')drag={k:'box',a:u,b:u,moved:false};
+ else if(tool==='erase'){push();drag={k:'erase',n:0};eraseAt(u,tol)}
+ drawEd()});
+ED.addEventListener('pointermove',e=>{const s=svgPt(ED,e),u=toU(s),tol=12*pxU();
+ if(!drag){hover=(tool==='line'||tool==='pt')&&div>=0?nearest(u,tol):null;drawEd();return}
+ if(drag.k==='pan'){vx=drag.ox-(e.clientX-drag.x)/drag.c;vy=drag.oy-(e.clientY-drag.y)/drag.c;drawEd();return}
+ if(drag.k==='line'){const r=snapEnd(drag.a,u,tol);drag.b=r.p;drag.s=r.s}
+ else if(drag.k==='box'){drag.b=u;if(Math.hypot(u[0]-drag.a[0],u[1]-drag.a[1])>5*pxU())drag.moved=true}
+ else if(drag.k==='erase')eraseAt(u,tol);
+ drawEd()});
+function eraseAt(u,tol){const h=hitAt(u,tol);if(!h)return;if(h.k==='l')lines.splice(h.i,1);else pts.splice(h.i,1);sel={l:new Set(),p:new Set()};drag.n++;cache();drawEd()}
+ED.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;
+ if(d.k==='line'){const c=Math.hypot(d.b[0]-d.a[0],d.b[1]-d.a[1])>1e-3?clipSq(d.a,d.b):null;if(c){push();lines.push(la===180?{a:c[0],b:c[1],t:lt}:{a:c[0],b:c[1],t:lt,ang:la});changed()}}
+ else if(d.k==='box'){if(d.moved){const x0=Math.min(d.a[0],d.b[0]),x1=Math.max(d.a[0],d.b[0]),y0=Math.min(d.a[1],d.b[1]),y1=Math.max(d.a[1],d.b[1]),inn=p=>p[0]>=x0&&p[0]<=x1&&p[1]>=y0&&p[1]<=y1;
+   lines.forEach((l,i)=>{if(inn(l.a)&&inn(l.b))sel.l.add(i)});pts.forEach((p,i)=>{if(inn(p))sel.p.add(i)})}
+  else{const h=hitAt(d.a,12*pxU());if(h){const S2=h.k==='l'?sel.l:sel.p;S2.has(h.i)?S2.delete(h.i):S2.add(h.i)}}}
+ else if(d.k==='erase'){if(d.n)changed();else undo.pop()}
+ drawEd()});
+ED.addEventListener('pointercancel',()=>{drag=null;drawEd()});
+ED.addEventListener('pointerleave',()=>{if(!drag){hover=null;drawEd()}});
+const zoomAt=(f,cx,cy)=>{const nz=Math.min(8,Math.max(1,zoom*f)),nw=480/nz;vx=cx-(cx-vx)*nw/vw;vy=cy-(cy-vy)*nw/vw;vw=nw;zoom=nz;if(zoom===1){vx=vy=0}drawEd()};
+const wheelF=e=>Math.exp(-Math.max(-120,Math.min(120,e.deltaMode?e.deltaY*30:e.deltaY))*zk);
+ED.addEventListener('wheel',e=>{e.preventDefault();const s=svgPt(ED,e);zoomAt(wheelF(e),s[0],s[1])},{passive:false});
+$('zI').onclick=()=>zoomAt(1.25,vx+vw/2,vy+vw/2);$('zO').onclick=()=>zoomAt(1/1.25,vx+vw/2,vy+vw/2);$('zR').onclick=()=>{zoom=1;vx=vy=0;vw=480;drawEd()};
+$('zs').oninput=e=>zoomAt(e.target.value/100/zoom,vx+vw/2,vy+vw/2);$('zk').onchange=e=>{zk=+e.target.value};
+$('bPan').onclick=()=>{pan=!pan;$('bPan').setAttribute('aria-pressed',pan);ED.style.cursor=pan?'grab':''};
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('[data-tool]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawEd()});
+document.querySelectorAll('[data-lt]').forEach(b=>b.onclick=()=>{lt=b.dataset.lt;document.querySelectorAll('[data-lt]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(tool!=='line')document.querySelector('[data-tool=line]').click()});
+$('div').onchange=e=>{div=+e.target.value;cache();drawEd()};$('ang').onchange=e=>{angStep=+e.target.value};
+$('bUndo').onclick=()=>{if(!undo.length)return;redo.push(snap());restore(undo.pop())};
+$('bRedo').onclick=()=>{if(!redo.length)return;undo.push(snap());restore(redo.pop())};
+$('bClr').onclick=()=>{if(!lines.length&&!pts.length)return;push();lines=[];pts=[];sel={l:new Set(),p:new Set()};changed()};
+$('bSA').onclick=()=>{sel={l:new Set(lines.map((_,i)=>i)),p:new Set(pts.map((_,i)=>i))};drawEd()};
+$('bSI').onclick=()=>{sel={l:new Set(lines.map((_,i)=>i).filter(i=>!sel.l.has(i))),p:new Set(pts.map((_,i)=>i).filter(i=>!sel.p.has(i)))};drawEd()};
+$('bSC').onclick=()=>{sel={l:new Set(),p:new Set()};drawEd()};
+function delSel(){if(!sel.l.size&&!sel.p.size)return;push();lines=lines.filter((_,i)=>!sel.l.has(i));pts=pts.filter((_,i)=>!sel.p.has(i));sel={l:new Set(),p:new Set()};changed()}
+$('bSD').onclick=delSel;
+document.querySelectorAll('[data-to]').forEach(b=>b.onclick=()=>{if(!sel.l.size)return;push();const to=b.dataset.to;lines=lines.map((l,i)=>sel.l.has(i)&&l.t!=='B'?{...l,t:to==='X'?(l.t==='M'?'V':l.t==='V'?'M':l.t):to}:l);changed()});
+$('la').onchange=e=>{la=Math.max(0,Math.min(180,Math.round(+e.target.value)||0));e.target.value=la};
+$('bSetA').onclick=()=>{if(!sel.l.size)return;push();lines=lines.map((l,i)=>sel.l.has(i)&&(l.t==='M'||l.t==='V')?{...l,ang:la}:l);changed()};
+addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+ if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();delSel()}
+ else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();(e.shiftKey?$('bRedo'):$('bUndo')).click()}
+ else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();$('bRedo').click()}});
+// ---- お手本 ----
+function miuraCP(n,m,g){const L=[],sx=1/n,b=1/m,dy=Math.min(.9*b,sx/Math.tan(g*Math.PI/180)),Y=(i,j)=>j*b-dy/2+(i%2)*dy,z=j=>j%2?'M':'V',v=(i,j)=>(i+j)%2?'V':'M';
+ for(let j=1;j<m;j++)for(let i=0;i<n;i++)L.push({a:[i*sx,Y(i,j)],b:[(i+1)*sx,Y(i+1,j)],t:z(j)});
+ for(let i=1;i<n;i++)for(let j=0;j<m;j++)L.push({a:[i*sx,j===0?0:Y(i,j)],b:[i*sx,j===m-1?1:Y(i,j+1)],t:v(i,j)});return L}
+const PRE={half:()=>[{a:[.5,0],b:[.5,1],t:'V'}],tri:()=>[{a:[0,0],b:[1,1],t:'V'}],
+ zab:()=>[{a:[.5,0],b:[1,.5],t:'V'},{a:[1,.5],b:[.5,1],t:'V'},{a:[.5,1],b:[0,.5],t:'V'},{a:[0,.5],b:[.5,0],t:'V'}],
+ jab:()=>[1,2,3,4,5,6,7].map(i=>({a:[i/8,0],b:[i/8,1],t:i%2?'V':'M'})),
+ wb:()=>[{a:[0,0],b:[.5,.5],t:'V'},{a:[.5,.5],b:[1,1],t:'V'},{a:[1,0],b:[.5,.5],t:'V'},{a:[.5,.5],b:[0,1],t:'V'},{a:[0,.5],b:[.5,.5],t:'M'},{a:[.5,.5],b:[1,.5],t:'M'}],
+ sq:()=>[{a:[0,0],b:[.5,.5],t:'M'},{a:[.5,.5],b:[1,1],t:'M'},{a:[.5,0],b:[.5,.5],t:'V'},{a:[.5,.5],b:[.5,1],t:'V'},{a:[0,.5],b:[.5,.5],t:'V'},{a:[.5,.5],b:[1,.5],t:'V'}],
+ miura:()=>{const n=Math.max(2,Math.min(14,Math.round(+$('miN').value)||6)),m=Math.max(2,Math.min(14,Math.round(+$('miM').value)||6)),g=Math.max(40,Math.min(85,+$('miG').value||65));return miuraCP(n,m,g)}};
+$('pre').onchange=e=>$('mip').classList.toggle('on',e.target.value==='miura');
+$('bLoad').onclick=()=>{const k=$('pre').value;if(!k)return;push();lines=PRE[k]();pts=[];sel={l:new Set(),p:new Set()};changed();if(G)G.fit=true;if(prog===0)setProg(60)};
+// ---- 折りたたみ ----
+function rebuild(){model=ENG.build(lines);ENG.rinit(model);prepGL();lastT=-1;kick()}
+const tgt=()=>prog/100;
+const progText=()=>`${Math.round(prog)}%(180°の線は ${Math.round(prog/100*179)}°)`;
+function setProg(v){prog=Math.max(0,Math.min(100,v));$('prog').value=prog;$('progv').textContent=progText();kick()}
+$('prog').oninput=e=>setProg(+e.target.value);
+function kick(){if(!running){running=true;requestAnimationFrame(tick)}}
+const rConv=r=>(r.left<1e-4||!(r.moved>2e-5))&&r.res<5e-5;
+function tick(){running=false;
+ let done=true;if(model){const t0=NOW(),T=tgt();done=false;
+  if(T!==lastT){lastT=T;iters=0}
+  while(NOW()-t0<14){const r=ENG.rstep(model,T,1);iters++;if(rConv(r)||iters>2500){done=true;break}}}
+ draw3();status(done);if(!done){running=true;requestAnimationFrame(tick)}}
+// ---- 3D の座標 ----
+function newell(P){const n=[0,0,0];for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length];n[0]+=(a[1]-b[1])*(a[2]+b[2]);n[1]+=(a[2]-b[2])*(a[0]+b[0]);n[2]+=(a[0]-b[0])*(a[1]+b[1])}return n}
+function rot(a,g){const c=Math.cos(g),s=Math.sin(g),[x,y,z]=a;return[[c+(1-c)*x*x,(1-c)*x*y-s*z,(1-c)*x*z+s*y],[(1-c)*x*y+s*z,c+(1-c)*y*y,(1-c)*y*z-s*x],[(1-c)*x*z-s*y,(1-c)*y*z+s*x,c+(1-c)*z*z]]}
+const mv3=(A,x)=>A.map(r=>r[0]*x[0]+r[1]*x[1]+r[2]*x[2]);
+// 面ごとの頂点(内部座標)→ 中心をそろえ、平均の法線を表向きに。out: 'svg'=(x,-y,-z) 手前が表 / 'gl'=(x,-z,y) 上が表
+function world(out){const m=model;let F;
+ F=m.faces.map((f,i)=>ENG.facePts(m,i));
+ let N=[0,0,0],C=[0,0,0],n=0;for(const P of F){const q=newell(P);N=N.map((x,a)=>x+q[a]);for(const p of P){C=C.map((x,a)=>x+p[a]);n++}}
+ C=C.map(x=>x/(n||1));const L=Math.hypot(...N)||1;N=N.map(x=>x/L);
+ const ax=[N[1],-N[0],0],al=Math.hypot(ax[0],ax[1]),R=al>1e-9?rot(ax.map(x=>x/al),Math.atan2(al,N[2])):[[1,0,0],[0,1,0],[0,0,1]];
+ return F.map(P=>P.map(p=>{const q=mv3(R,[p[0]-C[0],p[1]-C[1],p[2]-C[2]]);return out==='gl'?[q[0],-q[2],q[1]]:[q[0],-q[1],-q[2]]}))}
+function sizeInfo(x0,x1,y0,y1){let t=`折りたたんだ外形(四角で囲んだ大きさ): 幅 ${Math.round((x1-x0)*100)}% × 奥行き ${Math.round((y1-y0)*100)}%`;
+$('info').textContent=t}
+// ---- 3D 表示(Three.js)----
+let G=null;
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#888'}
+function initGL(){if(typeof THREE==='undefined')return false;
+ try{const cv=$('gl'),r=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true,preserveDrawingBuffer:true});
+  r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;
+  const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(35,1,.01,100);
+  const ctl=THREE.OrbitControls?new THREE.OrbitControls(cam,cv):null;
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8a949c,.42));
+  const d1=new THREE.DirectionalLight(0xffffff,.62);d1.position.set(1.3,3.2,1.8);d1.castShadow=true;d1.shadow.mapSize.set(2048,2048);
+  Object.assign(d1.shadow.camera,{left:-1.3,right:1.3,top:1.3,bottom:-1.3,near:.1,far:12});d1.shadow.bias=-.0004;d1.shadow.radius=3;scene.add(d1);
+  const d2=new THREE.DirectionalLight(0xffffff,.32);d2.position.set(-1.5,-1.8,-1.2);scene.add(d2);
+  const d3=new THREE.DirectionalLight(0xffffff,.12);d3.position.set(-2,1,2.5);scene.add(d3);
+  const geo=new THREE.BufferGeometry(),mat=side=>new THREE.MeshPhongMaterial({side,flatShading:true,shininess:7,specular:0x222222,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+  // 三角形は内部座標で左回り → この向きでは裏側が THREE の表面になる
+  const mUp=mat(THREE.BackSide),mDn=mat(THREE.FrontSide),meshU=new THREE.Mesh(geo,mUp),meshD=new THREE.Mesh(geo,mDn);
+  for(const ms of[meshU,meshD]){ms.castShadow=true;ms.frustumCulled=false;scene.add(ms)}
+  const lgeo=new THREE.BufferGeometry(),edges=new THREE.LineSegments(lgeo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.9}));edges.frustumCulled=false;scene.add(edges);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(12,12),new THREE.ShadowMaterial({opacity:.17}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+  G={r,scene,cam,ctl,geo,mUp,mDn,lgeo,edges,ground,d1,fit:true,auto:true,render(){r.render(scene,cam)}};
+  if(ctl){ctl.enableDamping=false;ctl.addEventListener('change',()=>G.render());ctl.addEventListener('start',()=>{G.auto=false})}
+  const ro=new ResizeObserver(()=>{const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();G.render()});ro.observe(cv);
+  themeGL();return true}catch(e){G=null;return false}}
+// 紙の色(表・裏)。空なら画面の配色に合わせる
+let PC={f:'',b:''};try{const s=JSON.parse(localStorage.getItem('origami-colors-v1')||'null');if(s)PC={f:s.f||'',b:s.b||''}}catch(e){}
+const paperCol=k=>PC[k]||css(k==='f'?'--front':'--back');
+function syncColorInputs(){const hex=c=>{const m=String(c).trim();if(/^#[0-9a-f]{6}$/i.test(m))return m;if(/^#[0-9a-f]{3}$/i.test(m))return '#'+m.slice(1).split('').map(x=>x+x).join('');return '#888888'};$('cF').value=hex(paperCol('f'));$('cB').value=hex(paperCol('b'))}
+function setPC(k,v){PC[k]=v;try{localStorage.setItem('origami-colors-v1',JSON.stringify(PC))}catch(e){}syncColorInputs();themeGL();if(!G&&model)draw3()}
+$('cF').oninput=e=>setPC('f',e.target.value);$('cB').oninput=e=>setPC('b',e.target.value);$('cR').onclick=()=>{setPC('f','');setPC('b','')};
+function themeGL(){if(!G)return;G.mUp.color.set(paperCol('f'));G.mDn.color.set(paperCol('b'));G.cM=new THREE.Color(css('--m'));G.cV=new THREE.Color(css('--v'));G.cB=new THREE.Color(css('--fg'));G.cF=new THREE.Color(css('--f'));if(model){prepGL();draw3()}}
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>setTimeout(()=>{syncColorInputs();themeGL();if(!G&&model)draw3()},0))}catch(e){}
+// 形が変わったときの下準備
+function prepGL(){if(!G||!model)return;const m=model;
+ m.triLoc=m.tris.map((t,i)=>{const f=m.faces[m.triF[i]];return t.map(k=>f.indexOf(k))});
+ m.eLoc=[];for(const e of m.edges){if(e.t==='F'&&!$('showE').checked)continue;let fi=m.hf.get(e.u+'>'+e.v);if(fi===undefined)fi=m.hf.get(e.v+'>'+e.u);if(fi===undefined)continue;const f=m.faces[fi];m.eLoc.push([fi,f.indexOf(e.u),f.indexOf(e.v),e.t])}
+ // 三角形の数が変わると古い法線の配列が短いまま残り、描画が止まる(紙が透明になる)ので作り直す
+ G.geo.deleteAttribute('normal');G.geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(m.tris.length*9),3));
+ const lc=new Float32Array(m.eLoc.length*6);m.eLoc.forEach((e,i)=>{const c=e[3]==='M'?G.cM:e[3]==='V'?G.cV:e[3]==='B'?G.cB:G.cF;for(let j=0;j<2;j++){lc[i*6+j*3]=c.r;lc[i*6+j*3+1]=c.g;lc[i*6+j*3+2]=c.b}});
+ G.lgeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(m.eLoc.length*6),3));G.lgeo.setAttribute('color',new THREE.BufferAttribute(lc,3))}
+function draw3(){if(!model)return;if(!G)return draw3svg();const m=model,W=world('gl'),pa=G.geo.getAttribute('position'),A=pa.array;
+ let x0=1e9,x1=-1e9,y0=1e9,z0=1e9,z1=-1e9,R=.05;
+ m.tris.forEach((t,i)=>{const P=W[m.triF[i]],L=m.triLoc[i];for(let j=0;j<3;j++){const p=P[L[j]];A[i*9+j*3]=p[0];A[i*9+j*3+1]=p[1];A[i*9+j*3+2]=p[2]}});
+ for(const P of W)for(const p of P){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);z0=Math.min(z0,p[2]);z1=Math.max(z1,p[2]);R=Math.max(R,Math.hypot(p[0],p[1],p[2]))}
+ pa.needsUpdate=true;G.geo.computeVertexNormals();
+ const la=G.lgeo.getAttribute('position'),B=la.array,lift=.0015;
+ m.eLoc.forEach((e,i)=>{const P=W[e[0]];for(let j=0;j<2;j++){const p=P[e[1+j]];B[i*6+j*3]=p[0];B[i*6+j*3+1]=p[1]+lift;B[i*6+j*3+2]=p[2]}});la.needsUpdate=true;
+ G.edges.visible=$('showE').checked;G.ground.visible=$('showS').checked;G.ground.position.y=y0-.004;G.R=R;
+ if(G.fit){G.fit=false;view(G.view||'iso')}else if(G.auto)refit();
+ G.render();sizeInfo(x0,x1,z0,z1)}
+function refit(){const c=G.cam,t=G.ctl?G.ctl.target:new THREE.Vector3(),dir=c.position.clone().sub(t).normalize(),d=(G.R||.75)/Math.sin(c.fov*Math.PI/360)*.98;c.position.copy(t.clone().add(dir.multiplyScalar(d)));if(G.ctl)G.ctl.update()}
+function view(k){if(G){G.auto=true;G.view=k}if(!G){if(k==='top'){yaw=0;tilt=0}else if(k==='iso'){yaw=-.5;tilt=1.0}zoom3=1;draw3();return}
+ const R=G.R||.75,d=R/Math.sin(G.cam.fov*Math.PI/360)*.98,dir=k==='top'?[0,1,.0001]:[.55,.75,.95],L=Math.hypot(...dir);
+ G.cam.position.set(dir[0]/L*d,dir[1]/L*d,dir[2]/L*d);G.cam.up.set(0,1,0);G.cam.lookAt(0,0,0);if(G.ctl){G.ctl.target.set(0,0,0);G.ctl.update()}G.render()}
+// ---- 3D 表示(WebGL が使えないときの SVG)----
+function draw3svg(){
+ const W=world('svg');let R=.05;for(const P of W)for(const p of P)R=Math.max(R,Math.hypot(p[0],p[1],p[2]));
+ const cY=Math.cos(yaw),sY=Math.sin(yaw),cT=Math.cos(tilt),sT=Math.sin(tilt),sc=200/R*zoom3,Ld=[-.35,.45,.82],out=[];
+ let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+ W.forEach((P,fi)=>{const pr=P.map(([X,Y,Z])=>{x0=Math.min(x0,X);x1=Math.max(x1,X);y0=Math.min(y0,Y);y1=Math.max(y1,Y);
+   const X1=X*cY-Y*sY,Y1=X*sY+Y*cY,Y2=Y1*cT+Z*sT,D=-Y1*sT+Z*cT;return[240+X1*sc,240-Y2*sc,D]});
+  const nv=newell(P.map(([X,Y,Z])=>{const X1=X*cY-Y*sY,Y1=X*sY+Y*cY;return[X1,Y1*cT+Z*sT,-Y1*sT+Z*cT]})),nl=Math.hypot(...nv)||1;
+  let a2=0;for(let i=0;i<pr.length;i++){const a=pr[i],b=pr[(i+1)%pr.length];a2+=a[0]*b[1]-b[0]*a[1]}
+  out.push({pr,front:a2>0,lit:Math.abs(nv[0]*Ld[0]+nv[1]*Ld[1]+nv[2]*Ld[2])/nl,d:pr.reduce((s,q)=>s+q[2],0)/pr.length})});
+ out.sort((a,b)=>a.d-b.d);
+ V3.innerHTML=out.map(o=>{const pp=o.pr.map(q=>f1(q[0])+','+f1(q[1])).join(' ');return`<polygon points="${pp}" fill="${paperCol(o.front?'f':'b')}" stroke="var(--fg)" stroke-width="1" stroke-linejoin="round"/><polygon points="${pp}" fill="#000" opacity="${(.42*(1-o.lit)).toFixed(2)}"/>`}).join('');
+ sizeInfo(x0,x1,y0,y1)}
+function status(done){const m=model;if(!m)return;const ws=[];
+ if(m.bad.length)ws.push(`平らにたたむと矛盾する頂点が ${m.bad.length} か所あります(展開図の赤い丸。丸にカーソルを合わせると理由が出ます)。`);
+ if(m.pruned)ws.push(`端がほかの線や紙のふちにつながっていない山折り・谷折りの部分が ${m.pruned} か所あり、折りには使われません(展開図で赤くぼかして表示)。`);
+ if(done&&prog>8){const cs=m.cre.filter(c=>c.t!=='F'&&c.A>1e-3),T=tgt(),still=cs.filter(c=>Math.abs(c.th)<Math.min(c.A*T*.15,2*Math.PI/180)).length;
+  if(cs.length&&still===cs.length)ws.push('この展開図は、面を曲げずには折れません。');
+  else if(still)ws.push(`${still} 本の折り線が動きません(T字につながる線や、平らに折れない頂点があると止まります)。`)}
+ const w=ws.join(' ');if(w!==lastWarn){lastWarn=w;$('msg').textContent=w;$('msg').classList.toggle('on',!!w)}}
+// SVG 表示のときの視点操作
+let vd=null;
+V3.addEventListener('pointerdown',e=>{V3.setPointerCapture(e.pointerId);vd=[e.clientX,e.clientY,yaw,tilt];V3.style.cursor='grabbing'});
+V3.addEventListener('pointermove',e=>{if(!vd)return;yaw=vd[2]-(e.clientX-vd[0])*.01;tilt=Math.min(Math.PI/2,Math.max(0,vd[3]+(e.clientY-vd[1])*.01));draw3()});
+V3.addEventListener('pointerup',()=>{vd=null;V3.style.cursor=''});
+V3.addEventListener('wheel',e=>{e.preventDefault();zoom3=Math.min(4,Math.max(.4,zoom3*wheelF(e)));draw3()},{passive:false});
+$('vTop').onclick=()=>view('top');$('vIso').onclick=()=>view('iso');$('vFit').onclick=()=>view(G&&G.view||'iso');
+$('showE').onchange=()=>{prepGL();draw3()};$('showS').onchange=()=>draw3();
+// ---- ファイル(Origami Simulator と同じ決まり)----
+const note=t=>{$('fmsg').textContent=t};
+let DL=null;(async()=>{try{if(window.claude&&typeof window.claude.use==='function')DL=await window.claude.use('downloads')}catch(e){DL=null}})();
+async function saveFile(name,data,mime){
+ if(DL){try{await DL.save({filename:name,data});note(`${name} を保存しました。`)}catch(e){const c=e&&e.code;if(c!=='declined')note(c==='rate_limited'?'保存の確認が開いています。閉じてからもう一度押してください。':'このページでは保存できませんでした。')}return}
+ try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);note(`${name} を保存しました。`)}catch(e){note('このページでは保存できませんでした。')}}
+const HEX={M:'#ff0000',V:'#0000ff',B:'#000000',F:'#ffff00'};
+const angOf=l=>l.ang===undefined?180:l.ang;
+function toSVG(){const W=400,p=10,n=v=>(v*W).toFixed(3);
+ const ln=(a,b,t,o)=>`  <line x1="${n(a[0])}" y1="${n(a[1])}" x2="${n(b[0])}" y2="${n(b[1])}" fill="none" stroke="${HEX[t]}" stroke-opacity="${o}" stroke-width="1"/>\n`;
+ let s=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${W+2*p}" height="${W+2*p}" viewBox="${-p} ${-p} ${W+2*p} ${W+2*p}">\n`;
+ if(!lines.some(l=>l.t==='B'))for(const[a,b]of[[[0,0],[1,0]],[[1,0],[1,1]],[[1,1],[0,1]],[[0,1],[0,0]]])s+=ln(a,b,'B',1);
+ for(const l of lines)s+=ln(l.a,l.b,l.t,(l.t==='M'||l.t==='V')?(angOf(l)/180).toFixed(4):1);
+ return s+'</svg>\n'}
+function toFOLD(){const m=ENG.build(lines),E=m.edges.concat(m.prunedE);
+ return JSON.stringify({file_spec:1.2,file_creator:'おりがみ 展開図シミュレーター',file_classes:['singleModel'],frame_classes:['creasePattern'],frame_attributes:['2D'],frame_unit:'unit',
+  vertices_coords:m.P.map(p=>[+p[0].toFixed(8),+p[1].toFixed(8)]),edges_vertices:E.map(e=>[e.u,e.v]),edges_assignment:E.map(e=>e.t),
+  edges_foldAngle:E.map(e=>e.t==='V'?e.ang:e.t==='M'?-e.ang:0),faces_vertices:m.faces},null,1)}
+$('bSaveSVG').onclick=()=>saveFile('origami-cp.svg',toSVG(),'image/svg+xml');
+$('bSaveFOLD').onclick=()=>saveFile('origami-cp.fold.json',toFOLD(),'application/json');
+// 読み込み: 大きさを 0〜1 にそろえ、近い端点をまとめ、線の途中に来る端点を線の上に乗せる
+function normalize(segs){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const s of segs)for(const p of[s.a,s.b]){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1])}
+ const sz=Math.max(x1-x0,y1-y0)||1,ox=(1-(x1-x0)/sz)/2,oy=(1-(y1-y0)/sz)/2,T=p=>[(p[0]-x0)/sz+ox,(p[1]-y0)/sz+oy],tol=.002,P=[];
+ const mp=p=>{for(const q of P)if(Math.hypot(q[0]-p[0],q[1]-p[1])<tol)return q;P.push(p);return p};
+ let L=segs.map(s=>({...s,a:mp(T(s.a)),b:mp(T(s.b))}));
+ for(const q of P)for(const s of L){if(s.a===q||s.b===q)continue;const d=dSeg(q,s.a,s.b);if(d>1e-12&&d<tol){const dx=s.b[0]-s.a[0],dy=s.b[1]-s.a[1],t=((q[0]-s.a[0])*dx+(q[1]-s.a[1])*dy)/(dx*dx+dy*dy);if(t>0&&t<1){q[0]=s.a[0]+t*dx;q[1]=s.a[1]+t*dy}}}
+ const cl=v=>Math.min(1,Math.max(0,+v.toFixed(9)));
+ return L.map(s=>{const o={a:[cl(s.a[0]),cl(s.a[1])],b:[cl(s.b[0]),cl(s.b[1])],t:s.t};if((s.t==='M'||s.t==='V')&&s.ang!==undefined&&Math.abs(s.ang-180)>.01)o.ang=Math.round(s.ang*100)/100;return o}).filter(s=>Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1])>1e-6)}
+const PAL=[['M',[255,0,0]],['V',[0,0,255]],['B',[0,0,0]],['F',[255,255,0]],['U',[255,0,255]],['C',[0,255,0]]];
+function colType(c){const m=String(c).match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);if(!m)return null;const v=[+m[1],+m[2],+m[3]];let best=null,bd=1e9;for(const[t,p]of PAL){const d=Math.hypot(v[0]-p[0],v[1]-p[1],v[2]-p[2]);if(d<bd){bd=d;best=t}}return bd<130?best:null}
+function pathPts(d){const tk=d.match(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g)||[],out=[];let i=0,cmd='',cx=0,cy=0,sx=0,sy=0,cur=null,curves=0;
+ const num=()=>parseFloat(tk[i++]),isN=()=>i<tk.length&&!/^[a-zA-Z]$/.test(tk[i]),lineTo=(x,y)=>{out.push([[cx,cy],[x,y]]);cx=x;cy=y};
+ const nArgs={C:6,S:4,Q:4,T:2,A:7};
+ while(i<tk.length){if(/^[a-zA-Z]$/.test(tk[i]))cmd=tk[i++];const rel=cmd===cmd.toLowerCase(),U=cmd.toUpperCase();
+  if(U==='Z'){if(cx!==sx||cy!==sy)lineTo(sx,sy);continue}
+  if(!isN())break;
+  if(U==='M'){const x=num(),y=num();cx=rel?cx+x:x;cy=rel?cy+y:y;sx=cx;sy=cy;cmd=rel?'l':'L'}
+  else if(U==='L'){const x=num(),y=num();lineTo(rel?cx+x:x,rel?cy+y:y)}
+  else if(U==='H'){const x=num();lineTo(rel?cx+x:x,cy)}
+  else if(U==='V'){const y=num();lineTo(cx,rel?cy+y:y)}
+  else if(nArgs[U]){const a=[];for(let k=0;k<nArgs[U];k++)a.push(num());const x=a[a.length-2],y=a[a.length-1];curves++;lineTo(rel?cx+x:x,rel?cy+y:y)}
+  else i++}
+ return{segs:out,curves}}
+function parseSVG(text){const doc=new DOMParser().parseFromString(text,'image/svg+xml');if(doc.querySelector('parsererror')||doc.documentElement.nodeName.toLowerCase()!=='svg')throw new Error('SVG として読めませんでした');
+ const host=document.createElement('div');host.style.cssText='position:absolute;left:-10000px;top:0;width:10px;height:10px;overflow:hidden;visibility:hidden';
+ const svg=document.importNode(doc.documentElement,true);svg.querySelectorAll('script,foreignObject').forEach(n=>n.remove());host.appendChild(svg);document.body.appendChild(host);
+ const segs=[],cnt={M:0,V:0,B:0,F:0,C:0,X:0};let curves=0;
+ try{for(const el of svg.querySelectorAll('line,polyline,polygon,path,rect')){const st=getComputedStyle(el);if(!st.stroke||st.stroke==='none'){cnt.X++;continue}
+   let t=colType(st.stroke);if(!t){cnt.X++;continue}if(t==='C'){cnt.C++;continue}if(t==='U')t='F';
+   const op=(parseFloat(st.strokeOpacity)||0)*(st.opacity===''?1:parseFloat(st.opacity));const M=el.getCTM&&el.getCTM(),tf=p=>M?[M.a*p[0]+M.c*p[1]+M.e,M.b*p[0]+M.d*p[1]+M.f]:p;
+   let raw=[],tag=el.tagName.toLowerCase();
+   if(tag==='line')raw=[[[el.x1.baseVal.value,el.y1.baseVal.value],[el.x2.baseVal.value,el.y2.baseVal.value]]];
+   else if(tag==='rect'){const x=el.x.baseVal.value,y=el.y.baseVal.value,w=el.width.baseVal.value,h=el.height.baseVal.value;raw=[[[x,y],[x+w,y]],[[x+w,y],[x+w,y+h]],[[x+w,y+h],[x,y+h]],[[x,y+h],[x,y]]]}
+   else if(tag==='polyline'||tag==='polygon'){const q=[...el.points].map(p=>[p.x,p.y]);for(let k=0;k+1<q.length;k++)raw.push([q[k],q[k+1]]);if(tag==='polygon'&&q.length>2)raw.push([q[q.length-1],q[0]])}
+   else{const r=pathPts(el.getAttribute('d')||'');raw=r.segs;curves+=r.curves}
+   for(const[a,b]of raw){const s={a:tf(a),b:tf(b),t};if(t==='M'||t==='V')s.ang=Math.max(0,Math.min(1,op))*180;segs.push(s);cnt[t]++}}}
+ finally{host.remove()}
+ const extra=[];if(cnt.C)extra.push(`切り込み(緑)${cnt.C}本は未対応のため省きました`);if(cnt.X)extra.push(`色が決まりと違う線 ${cnt.X}本を省きました`);if(curves)extra.push(`曲線 ${curves}本は直線に置きかえました`);
+ return{lines:normalize(segs),msg:`SVG を読み込みました(山 ${cnt.M}・谷 ${cnt.V}・折すじ ${cnt.F}・ふち ${cnt.B} 本)。`+(extra.length?extra.join('。')+'。':'')}}
+function parseFOLD(text){let f;try{f=JSON.parse(text)}catch(e){throw new Error('FOLD(JSON)として読めませんでした')}
+ if(!f.vertices_coords&&Array.isArray(f.file_frames)&&f.file_frames[0])f={...f,...f.file_frames[0]};
+ const V=f.vertices_coords,E=f.edges_vertices,A=f.edges_assignment||[],ang=f.edges_foldAngle||f.edges_foldAngles;
+ if(!Array.isArray(V)||!Array.isArray(E))throw new Error('vertices_coords と edges_vertices が見つかりません');
+ const segs=[],cnt={M:0,V:0,B:0,F:0,C:0};
+ E.forEach((e,i)=>{let t=String(A[i]||'U').toUpperCase(),a=ang?ang[i]:undefined;
+  if(t==='C'){cnt.C++;return}if(t==='J')t='F';
+  if(t==='U'){t=(typeof a==='number'&&a!==0)?(a>0?'V':'M'):'F'}
+  if((t==='M'||t==='V')&&a===null)t='F';
+  if(!'MVBF'.includes(t))t='F';
+  const p=V[e[0]],q=V[e[1]];if(!p||!q)return;const s={a:[+p[0],+p[1]],b:[+q[0],+q[1]],t};
+  if(t==='M'||t==='V')s.ang=typeof a==='number'?Math.min(180,Math.abs(a)):180;segs.push(s);cnt[t]++});
+ return{lines:normalize(segs),msg:`FOLD を読み込みました(山 ${cnt.M}・谷 ${cnt.V}・折すじ ${cnt.F}・ふち ${cnt.B} 本)。`+(cnt.C?`切り込み ${cnt.C}本は未対応のため省きました。`:'')}}
+$('bOpen').onclick=()=>$('file').click();
+$('file').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+ let r;try{const text=await f.text();r=(/\.svg$/i.test(f.name)||/^\s*(<\?xml|<svg|<!DOCTYPE svg)/i.test(text))?parseSVG(text):parseFOLD(text)}catch(err){note('読み込めませんでした: '+err.message);return}
+ if(!r.lines.length){note('折り線が見つかりませんでした。'+r.msg);return}
+ push();lines=r.lines;pts=[];sel={l:new Set(),p:new Set()};changed();if(G)G.fit=true;if(prog===0)setProg(50);note(r.msg)};
+// ---- 全画面 ----
+function setFS(on){document.body.classList.toggle('fs',on);$('bFS').setAttribute('aria-pressed',on);$('bFS').textContent=on?'全画面を終了':'全画面'}
+$('bFS').onclick=async()=>{const on=!document.body.classList.contains('fs');setFS(on);try{if(on){if(!document.fullscreenElement)await document.documentElement.requestFullscreen()}else if(document.fullscreenElement)await document.exitFullscreen()}catch(err){}};
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&document.body.classList.contains('fs'))setFS(false)});
+// ---- 開始 ----
+if(!initGL()){$('gl').hidden=true;$('v3').hidden=false}
+syncColorInputs();
+if(!loadSaved()){lines=miuraCP(6,6,65);prog=60}
+$('prog').value=prog;setProg(prog);cache();rebuild();drawEd();
+</script>
+</body>
+</html>
