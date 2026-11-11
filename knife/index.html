@@ -206,13 +206,14 @@ function newGame(){
   for(let i=0;i<N;i++)sh.push(6+Math.random()*12);
   const c1=2+Math.floor(Math.random()*3),c2=6+Math.floor(Math.random()*3);
   for(const i of[c1,c2]){chip[i]=1;sh[i]=Math.min(sh[i],4);}
-  G={stone:0,side:0,angle:20,dv:0,sh,chip,burr:[Array(N).fill(0),Array(N).fill(0)],scratches:[],scrAcc:0,polAcc:0,
+  G={stone:0,side:0,angle:20,hand:20,dv:0,sh,chip,burr:[Array(N).fill(0),Array(N).fill(0)],scratches:[],scrAcc:0,polAcc:0,
      water:1,t:0,speed:0,knife:{x:(LY.ST.x0+LY.ST.x1)/2,y:LY.ST.y1+SEG*1.5},contact:Array(N).fill(0),mode:'',
      msg:null,hintT:0,flipT:0,lastMode:'',modeT:0};
   clampKnife();if(sctx)sctx.clearRect(0,0,slurry.width,slurry.height);parts.length=0;
   if(LY)buildStones();
   updateHUD(true);
 }
+function setAngle(v){G.angle=clamp(v,0,40);G.hand=G.angle;}
 function clampKnife(){
   const S=LY.ST,k=G.knife;
   k.x=clamp(k.x,S.x0+BW/2+6,S.x1-BW/2-6);k.y=clamp(k.y,S.y0+30,S.y1+L-24);
@@ -250,7 +251,7 @@ function update(dt){
   if(state==='cut'){cut.t+=dt;updateCut(dt);setStroke(0);return;}
   if(state!=='play'){setStroke(0);return;}
   G.t+=dt;if(G.flipT>0)G.flipT=Math.max(0,G.flipT-dt);
-  const ad=(keys.up?1:0)-(keys.down?1:0)+holdDir;if(ad)G.angle+=ad*10*dt;
+  const ad=(keys.up?1:0)-(keys.down?1:0)+holdDir;if(ad)setAngle(G.angle+ad*10*dt);
   const kx=(keys.right?1:0)-(keys.left?1:0),ky=(keys.tip?1:0)-(keys.heel?1:0);
   if(kx)pend.dx+=kx*520*dt;if(ky)pend.dy+=ky*220*dt;
   const pressing=ptr.down||!!kx||!!ky;
@@ -259,7 +260,8 @@ function update(dt){
   G.speed=lerp(G.speed,dist/dt,.15);
   // 手のぶれ
   const D=DIFF[diff];
-  G.dv+=(Math.random()-.5)*D.drift*90*dt;G.dv*=Math.exp(-2.2*dt);
+  G.dv+=(Math.random()-.5)*D.drift*90*dt;G.dv=clamp(G.dv*Math.exp(-2.2*dt),-5,5);
+  G.angle+=(G.hand-G.angle)*(1-Math.exp(-.45*dt));
   G.angle+=G.dv*dt*(pressing?.6+Math.min(G.speed/500,2.2):.25);
   G.angle=clamp(G.angle,0,40);
   G.contact.fill(0);G.mode='';
@@ -599,7 +601,7 @@ cv.addEventListener('pointermove',e=>{
 });
 const up=e=>{if(e.pointerId===ptr.id){ptr.down=false;ptr.id=null;cv.classList.remove('grab');}};
 cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
-cv.addEventListener('wheel',e=>{if(state!=='play')return;e.preventDefault();G.angle=clamp(G.angle-e.deltaY*.01,0,40);},{passive:false});
+cv.addEventListener('wheel',e=>{if(state!=='play')return;e.preventDefault();setAngle(G.angle-e.deltaY*.01);},{passive:false});
 const KM={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',z:'tip',Z:'tip',x:'heel',X:'heel'};
 addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
@@ -620,14 +622,14 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{const m=KM[e.key];if(m)keys[m]=false;});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;holdDir=0;});
 const ang=$('ang');
-ang.addEventListener('input',()=>{if(G&&state==='play')G.angle=+ang.value;});
+ang.addEventListener('input',()=>{if(G&&state==='play')setAngle(+ang.value);});
 ang.addEventListener('pointerdown',()=>{sliderHeld=true;});
 addEventListener('pointerup',()=>{sliderHeld=false;});
 for(const[id,d]of[['aUp',1],['aDn',-1]]){
   const b=$(id);
   b.addEventListener('pointerdown',e=>{if(b.disabled)return;holdDir=d;b.setPointerCapture(e.pointerId);e.preventDefault();});
   for(const ev of['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{holdDir=0;});
-  b.addEventListener('click',e=>{if(e.detail===0&&G&&state==='play')G.angle=clamp(G.angle+d*.5,0,40);});
+  b.addEventListener('click',e=>{if(e.detail===0&&G&&state==='play')setAngle(G.angle+d*.5);});
 }
 $('bWater').onclick=water;$('bFlip').onclick=flip;$('bNext').onclick=nextStone;$('bCut').onclick=startCut;
 $('bStart').onclick=startGame;
