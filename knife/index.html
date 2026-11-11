@@ -16,7 +16,7 @@ main{max-width:1000px;margin:0 auto;padding:18px 16px 40px}
 h1{font-size:22px;margin:0;letter-spacing:.06em}
 .lead{color:var(--mut);margin:0;flex:1 1 300px}
 .top .btns{display:flex;gap:6px}
-button,select{font:inherit;font-size:14px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+button,select{touch-action:manipulation;-webkit-tap-highlight-color:transparent;font:inherit;font-size:14px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
 button:hover{border-color:var(--acc)}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 button:disabled{opacity:.45;cursor:default}
@@ -32,7 +32,7 @@ button.pri kbd{color:inherit;background:transparent;border-color:currentColor;op
 .stat{color:var(--mut)}
 .stat b{color:var(--fg);font-variant-numeric:tabular-nums}
 .wrap{position:relative;border-radius:12px;overflow:hidden;background:#3a2a1d;border:1px solid var(--line)}
-canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
+canvas{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;display:block;width:100%;height:auto;touch-action:none;cursor:grab}
 canvas.grab{cursor:grabbing}
 .ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,14,8,.55);overflow:auto}
 .card{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:18px 20px;max-width:560px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -52,7 +52,7 @@ canvas.grab{cursor:grabbing}
 .ang{display:flex;align-items:center;gap:6px;flex:1 1 300px;min-width:0}
 .ang span{color:var(--mut);font-size:13px;white-space:nowrap}
 .ang input{flex:1 1 auto;min-width:80px;accent-color:var(--acc)}
-.ang button{width:38px;padding:6px 0;font-size:18px;line-height:1;touch-action:none;user-select:none;-webkit-user-select:none}
+.ang button{-webkit-touch-callout:none;width:38px;padding:6px 0;font-size:18px;line-height:1;touch-action:none;user-select:none;-webkit-user-select:none}
 .ang output{width:52px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
 .note{color:var(--mut);font-size:13px;margin-top:12px}
 .note summary{cursor:pointer}
