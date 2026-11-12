@@ -32,6 +32,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) 380px;
     gap: 16px;
+    grid-template-rows: auto auto 1fr;
     max-width: 1100px;
     min-height: 100%;
     margin: 0 auto;
@@ -190,21 +191,45 @@
   .hint { font-size: 12px; color: var(--muted); text-align: center; }
 
   /* ---------- 右: 工具店 ---------- */
-  .shop {
+  .stage { grid-column: 1; }
+  .shop { grid-column: 2; grid-row: 2 / span 2; }
+  .ach { grid-column: 1; align-self: start; }
+  .shop, .ach {
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 16px;
     padding: 12px;
     align-self: start;
   }
-  .shop h2 {
+  .shop h2, .ach h2 {
     margin: 10px 4px 6px;
     font-size: 13px;
     color: var(--muted);
     font-weight: 600;
     letter-spacing: .08em;
   }
-  .shop h2:first-child { margin-top: 2px; }
+  .shop h2:first-child, .ach h2:first-child { margin-top: 2px; }
+  .item.up { border-style: dashed; }
+  .item.up .cost { color: var(--good); }
+  .item.up.locked .cost { color: var(--muted); }
+  .ups-note { font-size: 11px; color: var(--muted); margin: 0 4px 6px; text-align: right; }
+  .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
+  .badge {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 8px;
+    align-items: center;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px 8px;
+  }
+  .badge .ico { font-size: 20px; text-align: center; line-height: 1; filter: grayscale(1); opacity: .35; }
+  .badge .nm { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .badge .ds { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .badge.on { border-color: var(--accent); }
+  .badge.on .ico { filter: none; opacity: 1; }
+  .badge.on .nm { color: var(--text); }
   .item {
     width: 100%;
     display: grid;
@@ -248,7 +273,9 @@
   .toast.show { opacity: 1; transform: translateX(-50%); }
 
   @media (max-width: 820px) {
-    .app { grid-template-columns: minmax(0, 1fr); padding: 10px; gap: 10px; }
+    .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; padding: 10px; gap: 10px; }
+    .shop { grid-column: 1; grid-row: auto; }
+    .ach-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     h1 { font-size: 13px; letter-spacing: 0; }
     .util { flex-shrink: 0; }
     h1 small { display: none; }
@@ -323,10 +350,15 @@
         </svg>
       </button>
     </div>
-    <div class="hint">クリック・タップ、またはキーボードを叩いて破壊！(押しっぱなしは無効)</div>
+    <div class="hint">クリック・タップ、またはキーボードを叩いて破壊！与えたダメージがそのままスクラップになります</div>
   </section>
 
   <aside class="shop" id="shop" aria-label="工具店"></aside>
+
+  <section class="ach" aria-label="実績">
+    <h2 id="achTitle">実績</h2>
+    <div class="ach-grid" id="achGrid"></div>
+  </section>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -352,29 +384,90 @@
 
   // kind: click = 1打の威力, auto = 毎秒ダメージ, crit = 会心率
   const ITEMS = [
-    { id: 'finger', kind: 'click', ico: '☝️', name: '指トレ', val: 1, base: 15 },
-    { id: 'puller', kind: 'click', ico: '🗜️', name: 'キープラー', val: 5, base: 200 },
-    { id: 'driver', kind: 'click', ico: '🪛', name: 'マイナスドライバー', val: 25, base: 2500 },
-    { id: 'hammer', kind: 'click', ico: '🔨', name: 'ハンマー', val: 120, base: 20000 },
-    { id: 'drill', kind: 'click', ico: '🛠️', name: '電動ドリル', val: 600, base: 200000 },
-    { id: 'crit', kind: 'crit', ico: '🎯', name: '急所ねらい', val: 2, base: 300, growth: 1.3, max: 25 },
-    { id: 'cat', kind: 'auto', ico: '🐈', name: 'キーボードに乗る猫', val: 1, base: 50 },
-    { id: 'coffee', kind: 'auto', ico: '☕', name: 'こぼれたコーヒー', val: 6, base: 500 },
-    { id: 'rage', kind: 'auto', ico: '👊', name: '台パン', val: 30, base: 4000 },
+    { id: 'finger', kind: 'click', ico: '☝️', name: '指トレ', val: 1, base: 10 },
+    { id: 'puller', kind: 'click', ico: '🗜️', name: 'キープラー', val: 5, base: 120 },
+    { id: 'driver', kind: 'click', ico: '🪛', name: 'マイナスドライバー', val: 25, base: 1500 },
+    { id: 'hammer', kind: 'click', ico: '🔨', name: 'ハンマー', val: 120, base: 15000 },
+    { id: 'drill', kind: 'click', ico: '🛠️', name: '電動ドリル', val: 600, base: 150000 },
+    { id: 'crit', kind: 'crit', ico: '🎯', name: '急所ねらい', val: 2, base: 250, growth: 1.3, max: 25 },
+    { id: 'cat', kind: 'auto', ico: '🐈', name: 'キーボードに乗る猫', val: 1, base: 30 },
+    { id: 'coffee', kind: 'auto', ico: '☕', name: 'こぼれたコーヒー', val: 6, base: 400 },
+    { id: 'rage', kind: 'auto', ico: '👊', name: '台パン', val: 30, base: 3500 },
     { id: 'solder', kind: 'auto', ico: '🔥', name: 'はんだごて', val: 150, base: 30000 },
     { id: 'press', kind: 'auto', ico: '🏭', name: '油圧プレス', val: 800, base: 250000 },
     { id: 'laser', kind: 'auto', ico: '🛰️', name: '衛星レーザー', val: 4500, base: 2500000 },
   ];
   const SECTIONS = [
     ['click', '工具(1打の威力)'],
-    ['crit', '技'],
+    ['crit', '技・強化'],
     ['auto', '自動破壊(毎秒)'],
   ];
-  const SAVE_KEY = 'keyswitch-crusher-v1';
-  const CRIT_MULT = 5;
+
+  // 1回かぎりの強化。req を満たすと買えるようになる
+  const TIER_REQ = [10, 25, 50], TIER_COST = [12, 150, 2500], TIER_NAME = ['改', '真', '極'];
+  const ROMAN = ['I', 'II', 'III', 'IV'];
+  const UPGRADES = [];
+  for (const it of ITEMS) {
+    if (it.kind === 'crit') continue;
+    TIER_REQ.forEach((req, k) => UPGRADES.push({
+      id: it.id + '_t' + k, ico: it.ico, tool: it.id,
+      name: `${it.name}・${TIER_NAME[k]}`, desc: `${it.name}の効果 2倍`,
+      cost: it.base * TIER_COST[k], need: `${it.name}を${req}個`, req: () => lv(it.id) >= req,
+    }));
+  }
+  [[1, 5000], [4, 400000], [10, 3e7], [20, 3e9]].forEach(([n, c], k) => UPGRADES.push({
+    id: 'gclick' + k, ico: '⚒️', group: 'gclick',
+    name: '工具の焼き入れ ' + ROMAN[k], desc: 'すべての工具の威力 2倍',
+    cost: c, need: `スイッチを${n}個破壊`, req: () => S.broken >= n,
+  }));
+  [[2, 20000], [6, 1.5e6], [12, 1e8], [24, 1e10]].forEach(([n, c], k) => UPGRADES.push({
+    id: 'gauto' + k, ico: '⚡', group: 'gauto',
+    name: '過負荷運転 ' + ROMAN[k], desc: 'すべての自動破壊 2倍',
+    cost: c, need: `スイッチを${n}個破壊`, req: () => S.broken >= n,
+  }));
+  [[5, 30000], [15, 5e6]].forEach(([n, c], k) => UPGRADES.push({
+    id: 'critx' + k, ico: '💥', group: 'critx',
+    name: '会心の極意 ' + ROMAN[k], desc: '会心の倍率 +5倍',
+    cost: c, need: `急所ねらいを${n}個`, req: () => lv('crit') >= n,
+  }));
+  [[50, 80000], [5000, 2e7]].forEach(([n, c], k) => UPGRADES.push({
+    id: 'syn' + k, ico: '🐾', group: 'syn',
+    name: '猫の手も借りる ' + ROMAN[k], desc: '1打に毎秒ダメージの3%を上乗せ',
+    cost: c, need: `毎秒ダメージ ${n.toLocaleString('ja-JP')}`, req: () => autoPower() >= n,
+  }));
+
+  const upCount = () => UPGRADES.filter(u => S.ups[u.id]).length;
+  const ACH = [
+    { id: 'hit1', ico: '👆', name: 'はじめの一打', desc: 'スイッチを1回叩く', ok: () => S.clicks >= 1 },
+    { id: 'hit100', ico: '✊', name: '百裂打ち', desc: '100回叩く', ok: () => S.clicks >= 100 },
+    { id: 'hit1000', ico: '⚾', name: '千本ノック', desc: '1,000回叩く', ok: () => S.clicks >= 1000 },
+    { id: 'hit10000', ico: '🩹', name: '腱鞘炎予備軍', desc: '10,000回叩く', ok: () => S.clicks >= 10000 },
+    { id: 'fast', ico: '💨', name: '目にも止まらぬ', desc: '1秒間に10回叩く', ok: () => S.fast },
+    { id: 'keys100', ico: '⌨️', name: 'タイピスト', desc: 'キーボードで100回叩く', ok: () => S.keys >= 100 },
+    { id: 'crit1', ico: '🎯', name: '会心の手応え', desc: '会心を出す', ok: () => S.crits >= 1 },
+    { id: 'crit100', ico: '💥', name: '急所マニア', desc: '会心を100回出す', ok: () => S.crits >= 100 },
+    { id: 'break1', ico: '🧩', name: '初破壊', desc: '最初のスイッチを壊す', ok: () => S.broken >= 1 },
+    { id: 'break10', ico: '🧰', name: '解体屋', desc: 'スイッチを10個壊す', ok: () => S.broken >= 10 },
+    { id: 'break30', ico: '🪦', name: 'スイッチの墓場', desc: 'スイッチを30個壊す', ok: () => S.broken >= 30 },
+    { id: 'boss1', ico: '👑', name: '大物食い', desc: '大きなキーを壊す', ok: () => S.bosses >= 1 },
+    { id: 'scrap1k', ico: '🪙', name: '小銭かせぎ', desc: 'スクラップを累計1,000', ok: () => S.total >= 1e3 },
+    { id: 'scrap1m', ico: '💰', name: 'スクラップ長者', desc: 'スクラップを累計100万', ok: () => S.total >= 1e6 },
+    { id: 'scrap100m', ico: '🏦', name: 'スクラップ王', desc: 'スクラップを累計1億', ok: () => S.total >= 1e8 },
+    { id: 'tools', ico: '🧲', name: '工具コレクター', desc: '工具を全種類そろえる', ok: () => ITEMS.every(i => i.kind !== 'click' || lv(i.id) > 0) },
+    { id: 'autos', ico: '🤖', name: '全自動工場', desc: '自動破壊を全種類そろえる', ok: () => ITEMS.every(i => i.kind !== 'auto' || lv(i.id) > 0) },
+    { id: 'cat10', ico: '🐈', name: '猫だまり', desc: '猫を10匹乗せる', ok: () => lv('cat') >= 10 },
+    { id: 'dps1000', ico: '🛋️', name: 'ほったらかし名人', desc: '毎秒ダメージ1,000', ok: () => autoPower() >= 1000 },
+    { id: 'up1', ico: '📜', name: '道具は使いよう', desc: '強化を1つ習得する', ok: () => upCount() >= 1 },
+    { id: 'up10', ico: '🥋', name: '免許皆伝', desc: '強化を10個習得する', ok: () => upCount() >= 10 },
+  ];
+  const SAVE_KEY = 'keyswitch-crusher-v2';
 
   // ---------- 状態 ----------
-  const fresh = () => ({ scrap: 0, total: 0, broken: 0, level: 1, hp: 0, owned: {}, sound: true });
+  const fresh = () => ({
+    scrap: 0, total: 0, broken: 0, bosses: 0, level: 1, hp: 0,
+    clicks: 0, crits: 0, keys: 0, fast: false,
+    owned: {}, ups: {}, ach: {}, sound: true,
+  });
   let S = fresh();
   try {
     const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -386,14 +479,26 @@
 
   const lv = id => S.owned[id] || 0;
   const cost = it => Math.floor(it.base * Math.pow(it.growth || 1.15, lv(it.id)));
-  const sumOf = kind => ITEMS.filter(i => i.kind === kind).reduce((a, i) => a + i.val * lv(i.id), 0);
-  const clickPower = () => 1 + sumOf('click');
-  const autoPower = () => sumOf('auto');
+
+  // 強化による倍率。買ったときと読み込んだときに作り直す
+  let M;
+  function recalc() {
+    const n = g => UPGRADES.filter(u => u.group === g && S.ups[u.id]).length;
+    M = { tool: {}, gclick: Math.pow(2, n('gclick')), gauto: Math.pow(2, n('gauto')),
+          critMult: 5 + 5 * n('critx'), syn: 0.03 * n('syn') };
+    for (const it of ITEMS) {
+      M.tool[it.id] = Math.pow(2, UPGRADES.filter(u => u.tool === it.id && S.ups[u.id]).length);
+    }
+  }
+  recalc();
+  const sumOf = kind => ITEMS.filter(i => i.kind === kind)
+    .reduce((a, i) => a + i.val * lv(i.id) * M.tool[i.id], 0);
+  const autoPower = () => sumOf('auto') * M.gauto;
+  const clickPower = () => (1 + sumOf('click')) * M.gclick + autoPower() * M.syn;
   const critChance = () => (5 + sumOf('crit')) / 100;
 
   const isBoss = level => level % 10 === 0;
-  const maxHp = level => Math.floor(10 * Math.pow(1.12, level - 1)) * (isBoss(level) ? 5 : 1);
-  const reward = level => Math.ceil(maxHp(level) * (isBoss(level) ? 3 : 1) * (1 + level * 0.02));
+  const maxHp = level => Math.floor(1000 * Math.pow(1.3, level - 1)) * (isBoss(level) ? 5 : 1);
 
   const UNITS = ['', '万', '億', '兆', '京', '垓', '𥝱', '穣'];
   function fmt(n) {
@@ -563,7 +668,7 @@
     el.sw.classList.toggle('boss', boss);
     el.targetName.textContent = boss ? `👑 ${defaultLegend}キー(${type.name})` : `${type.name}スイッチ`;
     el.targetName.classList.toggle('boss', boss);
-    el.targetSub.textContent = `Lv.${L} ・ ${type.kind} ・ 報酬 ${fmt(reward(L))}`;
+    el.targetSub.textContent = `Lv.${L} ・ ${type.kind}`;
     if (animate) {
       el.sw.classList.remove('spawn');
       void el.sw.offsetWidth;
@@ -592,8 +697,8 @@
   function breakSwitch() {
     const L = S.level;
     const boss = isBoss(L);
-    const gain = reward(L);
-    S.scrap += gain; S.total += gain; S.broken++;
+    S.broken++;
+    if (boss) S.bosses++;
     S.level++;
     S.hp = maxHp(S.level);
     const now = performance.now();
@@ -602,7 +707,7 @@
       const c = center();
       burst(c.x, c.y, boss ? 46 : 22, capColors, boss ? 520 : 380, ['cap', 'chip', 'chip']);
       burst(c.x, c.y + 40, boss ? 14 : 6, [stemColor, '#2a2d36', '#d9b24a'], 320, ['chip', 'spring']);
-      floatText('+' + fmt(gain), c.x, c.y - 70, 'gain');
+      floatText('破壊！', c.x, c.y - 70, 'gain');
       sndBreak(boss);
       dressSwitch(true);
     } else {
@@ -613,6 +718,7 @@
 
   // ダメージを与える。あふれた分は次のスイッチへ持ち越す
   function damage(amount) {
+    S.scrap += amount; S.total += amount; // 破壊の報酬はなく、与えたダメージがスクラップになる
     let guard = 0;
     while (amount > 0 && guard++ < 500) {
       const take = Math.min(amount, S.hp);
@@ -623,9 +729,16 @@
   }
 
   let upTimer = 0;
+  let hitTimes = [];
   function hit(x, y, label) {
     const crit = Math.random() < critChance();
-    const dmg = clickPower() * (crit ? CRIT_MULT : 1);
+    const dmg = clickPower() * (crit ? M.critMult : 1);
+    S.clicks++;
+    if (crit) S.crits++;
+    const t = performance.now();
+    hitTimes.push(t);
+    while (t - hitTimes[0] > 1000) hitTimes.shift();
+    if (hitTimes.length >= 10) S.fast = true;
     if (x == null) {
       const c = center();
       x = c.x + (Math.random() - 0.5) * 90;
@@ -647,39 +760,92 @@
 
   // ---------- 工具店 ----------
   const itemEls = {};
+  let upsBox, upsNote, upsKey = null, upEls = [];
+  function descOf(it) {
+    const m = M.tool[it.id];
+    return it.kind === 'click' ? `1打 +${fmt(it.val * m * M.gclick)}`
+      : it.kind === 'auto' ? `毎秒 +${fmt(it.val * m * M.gauto)}`
+      : `会心率 +${it.val}%(会心は${M.critMult}倍)`;
+  }
+  const ITEM_HTML = ico => `<span class="ico" aria-hidden="true">${ico}</span>
+    <span><div class="nm"></div><div class="ds"></div></span>
+    <span class="rt"><div class="cost"></div><div class="lv"></div></span>`;
+  function makeItem(ico, name, onBuy) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'item';
+    b.innerHTML = ITEM_HTML(ico);
+    b.querySelector('.nm').textContent = name;
+    b.addEventListener('click', e => {
+      onBuy();
+      if (e.detail > 0) b.blur(); // マウス・タッチのあとはキーボード連打に戻れるように
+    });
+    return { b, ds: b.querySelector('.ds'), cost: b.querySelector('.cost'), lv: b.querySelector('.lv') };
+  }
   function buildShop() {
     for (const [kind, title] of SECTIONS) {
       const h = document.createElement('h2');
       h.textContent = title;
       el.shop.appendChild(h);
       for (const it of ITEMS.filter(i => i.kind === kind)) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'item';
-        const desc = it.kind === 'click' ? `1打 +${fmt(it.val)}`
-          : it.kind === 'auto' ? `毎秒 +${fmt(it.val)}`
-          : `会心率 +${it.val}%(会心は${CRIT_MULT}倍)`;
-        b.innerHTML = `<span class="ico" aria-hidden="true">${it.ico}</span>
-          <span><div class="nm">${it.name}</div><div class="ds">${desc}</div></span>
-          <span class="rt"><div class="cost"></div><div class="lv"></div></span>`;
-        b.addEventListener('click', e => {
-          buy(it);
-          if (e.detail > 0) b.blur(); // マウス・タッチのあとはキーボード連打に戻れるように
-        });
-        el.shop.appendChild(b);
-        itemEls[it.id] = { b, cost: b.querySelector('.cost'), lv: b.querySelector('.lv') };
+        const e = makeItem(it.ico, it.name, () => buy(it));
+        el.shop.appendChild(e.b);
+        itemEls[it.id] = e;
+      }
+      if (kind === 'crit') {
+        upsBox = document.createElement('div');
+        upsNote = document.createElement('div');
+        upsNote.className = 'ups-note';
+        el.shop.append(upsBox, upsNote);
       }
     }
+  }
+  function bought() {
+    noise(0.08, 1200, 0.2);
+    dirty = true;
+    render();
+    checkAch();
+    save();
   }
   function buy(it) {
     const c = cost(it);
     if (S.scrap < c || (it.max && lv(it.id) >= it.max)) return;
     S.scrap -= c;
     S.owned[it.id] = lv(it.id) + 1;
-    noise(0.08, 1200, 0.2);
-    dirty = true;
-    render();
-    save();
+    bought();
+  }
+  function buyUp(u) {
+    if (S.ups[u.id] || S.scrap < u.cost || !u.req()) return;
+    S.scrap -= u.cost;
+    S.ups[u.id] = 1;
+    recalc();
+    bought();
+  }
+
+  // 買える強化すべてと、まだ条件を満たしていない強化を安い順に3つまで見せる
+  function renderUps() {
+    const open = UPGRADES.filter(u => !S.ups[u.id]);
+    const avail = open.filter(u => u.req()).sort((a, b) => a.cost - b.cost);
+    const locked = open.filter(u => !avail.includes(u)).sort((a, b) => a.cost - b.cost).slice(0, 3);
+    const key = avail.map(u => u.id).join() + '|' + locked.map(u => u.id).join();
+    if (key !== upsKey) {
+      upsKey = key;
+      upsBox.textContent = '';
+      upEls = [];
+      for (const u of avail.concat(locked)) {
+        const ok = avail.includes(u);
+        const e = makeItem(u.ico, u.name, () => buyUp(u));
+        e.b.classList.add('up');
+        e.b.classList.toggle('locked', !ok);
+        e.ds.textContent = u.desc;
+        e.cost.textContent = fmt(u.cost);
+        e.lv.textContent = ok ? '1回かぎり' : '🔒 ' + u.need;
+        upsBox.appendChild(e.b);
+        upEls.push({ u, b: e.b, ok });
+      }
+      upsNote.textContent = `習得済みの強化 ${UPGRADES.length - open.length} / ${UPGRADES.length}`;
+    }
+    for (const e of upEls) e.b.disabled = !e.ok || S.scrap < e.u.cost;
   }
 
   let dirty = true;
@@ -693,11 +859,45 @@
     for (const it of ITEMS) {
       const e = itemEls[it.id];
       const maxed = it.max && lv(it.id) >= it.max;
+      setText(e.ds, descOf(it));
       setText(e.cost, maxed ? '最大' : fmt(cost(it)));
       setText(e.lv, '所持 ' + lv(it.id));
       e.b.disabled = maxed || S.scrap < cost(it);
     }
+    renderUps();
     dirty = false;
+  }
+
+  // ---------- 実績 ----------
+  const achEls = {};
+  function buildAch() {
+    for (const a of ACH) {
+      const d = document.createElement('div');
+      d.className = 'badge';
+      d.innerHTML = `<span class="ico" aria-hidden="true">${a.ico}</span>
+        <span><div class="nm">${a.name}</div><div class="ds">${a.desc}</div></span>`;
+      $('achGrid').appendChild(d);
+      achEls[a.id] = d;
+    }
+    renderAch();
+  }
+  function renderAch() {
+    let n = 0;
+    for (const a of ACH) {
+      const on = !!S.ach[a.id];
+      if (on) n++;
+      achEls[a.id].classList.toggle('on', on);
+    }
+    $('achTitle').textContent = `実績 ${n} / ${ACH.length}`;
+  }
+  function checkAch() {
+    const got = ACH.filter(a => !S.ach[a.id] && a.ok());
+    if (!got.length) return;
+    for (const a of got) S.ach[a.id] = 1;
+    renderAch();
+    toast('🏆 実績解除: ' + got.map(a => a.name).join('、'));
+    noise(0.25, 2000, 0.3);
+    save();
   }
 
   let toastTimer = 0;
@@ -726,6 +926,7 @@
     if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace') e.preventDefault();
     const label = isBoss(S.level) ? null
       : KEY_LABELS[e.key] || (e.key.length === 1 ? e.key.toUpperCase() : null);
+    S.keys++;
     hit(null, null, label);
   });
 
@@ -745,6 +946,9 @@
     S.sound = sound;
     S.hp = maxHp(1);
     parts = [];
+    hitTimes = [];
+    recalc();
+    renderAch();
     dressSwitch(true);
     drawHp();
     render();
@@ -764,12 +968,13 @@
     }
     drawParts(Math.min(dt, 0.05));
     acc += dt;
-    if (dirty || acc > 0.25) { render(); acc = 0; }
+    if (dirty || acc > 0.25) { render(); checkAch(); acc = 0; }
     requestAnimationFrame(frame);
   }
 
   // ---------- 開始 ----------
   buildShop();
+  buildAch();
   if (!(S.hp > 0) || S.hp > maxHp(S.level)) S.hp = maxHp(S.level);
   dressSwitch(false);
   drawHp();
