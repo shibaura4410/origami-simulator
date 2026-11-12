@@ -213,6 +213,27 @@
   .item.up .cost { color: var(--good); }
   .item.up.locked .cost { color: var(--muted); }
   .ups-note { font-size: 11px; color: var(--muted); margin: 0 4px 6px; text-align: right; }
+  .axis-note { font-size: 11px; color: var(--muted); margin: 0 4px 8px; }
+  .axes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; margin-bottom: 14px; }
+  .axis {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 8px;
+    align-items: center;
+    text-align: left;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px 8px;
+    cursor: pointer;
+  }
+  .axis i { width: 22px; height: 22px; border-radius: 5px; border: 1px solid #0008; }
+  .axis .nm { font-size: 13px; font-weight: 700; }
+  .axis .ds { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .axis:not(:disabled):hover { border-color: var(--accent); }
+  .axis[aria-pressed="true"] { border-color: var(--accent); background: #3a3324; }
+  .axis:disabled { cursor: not-allowed; opacity: .5; }
+  .axis:disabled i { background: #444 !important; }
   .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
   .badge {
     display: grid;
@@ -356,6 +377,9 @@
   <aside class="shop" id="shop" aria-label="工具店"></aside>
 
   <section class="ach" aria-label="実績">
+    <h2 id="axisTitle">軸コレクション</h2>
+    <div class="axis-note">最初は青軸だけ。実績を集めると新しい軸が手に入ります。軸を替えて変わるのは打鍵音だけです。</div>
+    <div class="axes" id="axes"></div>
     <h2 id="achTitle">実績</h2>
     <div class="ach-grid" id="achGrid"></div>
   </section>
@@ -367,17 +391,19 @@
   'use strict';
 
   // ---------- データ ----------
+  // 軸は実績の数で手に入る。違いは見た目の色と打鍵音だけ
+  // snd: f=打鍵音の高さ, dur=長さ, v=音量, tick=クリック音, tone=電子的な響き
   const SWITCH_TYPES = [
-    { name: '赤軸', kind: 'リニア', color: '#e0443e' },
-    { name: '茶軸', kind: 'タクタイル', color: '#8a5a3c' },
-    { name: '青軸', kind: 'クリッキー', color: '#3d7be0' },
-    { name: '黒軸', kind: '重めのリニア', color: '#2a2a2e' },
-    { name: '銀軸', kind: 'スピード', color: '#c9ced8' },
-    { name: '桃軸', kind: '静音', color: '#f09ab8' },
-    { name: '緑軸', kind: '重めのクリッキー', color: '#3fae5a' },
-    { name: '紫軸', kind: '光学式', color: '#8f5fe0' },
-    { name: '金軸', kind: '磁気式', color: '#e0b23d' },
-    { name: '白軸', kind: '静電容量無接点', color: '#f2f2f2' },
+    { id: 'blue', name: '青軸', kind: 'クリッキー', color: '#3d7be0', need: 0, snd: { f: 2900, dur: 0.05, v: 0.28, tick: 5200 } },
+    { id: 'red', name: '赤軸', kind: 'リニア', color: '#e0443e', need: 2, snd: { f: 2100, dur: 0.05, v: 0.24 } },
+    { id: 'brown', name: '茶軸', kind: 'タクタイル', color: '#8a5a3c', need: 4, snd: { f: 1700, dur: 0.06, v: 0.26, tick: 900 } },
+    { id: 'black', name: '黒軸', kind: '重めのリニア', color: '#2a2a2e', need: 6, snd: { f: 1200, dur: 0.08, v: 0.34 } },
+    { id: 'silver', name: '銀軸', kind: 'スピード', color: '#c9ced8', need: 8, snd: { f: 3900, dur: 0.025, v: 0.24 } },
+    { id: 'pink', name: '桃軸', kind: '静音', color: '#f09ab8', need: 10, snd: { f: 800, dur: 0.05, v: 0.09 } },
+    { id: 'green', name: '緑軸', kind: '重めのクリッキー', color: '#3fae5a', need: 12, snd: { f: 2300, dur: 0.07, v: 0.34, tick: 4200 } },
+    { id: 'purple', name: '紫軸', kind: '光学式', color: '#8f5fe0', need: 15, snd: { f: 3000, dur: 0.04, v: 0.2, tone: 1800 } },
+    { id: 'gold', name: '金軸', kind: '磁気式', color: '#e0b23d', need: 18, snd: { f: 1500, dur: 0.05, v: 0.2, tone: 1100 } },
+    { id: 'white', name: '白軸', kind: '静電容量無接点', color: '#f2f2f2', need: 21, snd: { f: 620, dur: 0.1, v: 0.4 } },
   ];
   const BOSS_KEYS = ['Enter', 'Space', 'Shift', 'Tab', 'Ctrl', 'Esc', 'Del', 'Caps'];
   const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -466,7 +492,7 @@
   const fresh = () => ({
     scrap: 0, total: 0, broken: 0, bosses: 0, level: 1, hp: 0,
     clicks: 0, crits: 0, keys: 0, fast: false,
-    owned: {}, ups: {}, ach: {}, sound: true,
+    owned: {}, ups: {}, ach: {}, sw: 'blue', sound: true,
   });
   let S = fresh();
   try {
@@ -478,6 +504,8 @@
   };
 
   const lv = id => S.owned[id] || 0;
+  const achCount = () => ACH.filter(a => S.ach[a.id]).length;
+  const curType = () => SWITCH_TYPES.find(t => t.id === S.sw && achCount() >= t.need) || SWITCH_TYPES[0];
   const cost = it => Math.floor(it.base * Math.pow(it.growth || 1.15, lv(it.id)));
 
   // 強化による倍率。買ったときと読み込んだときに作り直す
@@ -547,12 +575,28 @@
     src.connect(f).connect(g).connect(a.destination);
     src.start();
   }
+  function tone(freq, dur, vol) {
+    const a = audio();
+    if (!a) return;
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+    o.connect(g).connect(a.destination);
+    o.start();
+    o.stop(a.currentTime + dur);
+  }
   let lastSnd = 0;
   function sndHit(crit) {
     const now = performance.now();
     if (now - lastSnd < 25) return;
     lastSnd = now;
-    noise(0.05, crit ? 1500 : 2600 + Math.random() * 900, crit ? 0.5 : 0.28);
+    const s = curType().snd;
+    noise(s.dur, s.f * (crit ? 0.6 : 0.9 + Math.random() * 0.2), s.v * (crit ? 1.7 : 1));
+    if (s.tick) noise(0.02, s.tick, s.v * 0.8);
+    if (s.tone) tone(s.tone, 0.07, s.v * 0.5);
   }
   function sndBreak(boss) {
     noise(boss ? 0.5 : 0.22, boss ? 500 : 900, 0.6);
@@ -651,7 +695,7 @@
   function dressSwitch(animate) {
     const L = S.level;
     const boss = isBoss(L);
-    const type = SWITCH_TYPES[Math.floor((L - 1) / 10) % SWITCH_TYPES.length];
+    const type = curType();
     stemColor = type.color;
     el.stem.setAttribute('fill', stemColor);
     if (boss) {
@@ -889,13 +933,52 @@
       achEls[a.id].classList.toggle('on', on);
     }
     $('achTitle').textContent = `実績 ${n} / ${ACH.length}`;
+    renderAxes();
+  }
+
+  const axisEls = {};
+  function buildAxes() {
+    for (const t of SWITCH_TYPES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'axis';
+      b.innerHTML = `<i style="background:${t.color}"></i><span><div class="nm">${t.name}</div><div class="ds"></div></span>`;
+      b.addEventListener('click', e => {
+        if (achCount() < t.need) return;
+        S.sw = t.id;
+        dressSwitch(true);
+        renderAxes();
+        lastSnd = 0;
+        sndHit(false); // 選んだ軸の音を試し聞き
+        save();
+        if (e.detail > 0) b.blur();
+      });
+      $('axes').appendChild(b);
+      axisEls[t.id] = { b, ds: b.querySelector('.ds') };
+    }
+  }
+  function renderAxes() {
+    const n = achCount();
+    const cur = curType();
+    for (const t of SWITCH_TYPES) {
+      const e = axisEls[t.id];
+      const have = n >= t.need;
+      e.b.disabled = !have;
+      e.b.setAttribute('aria-pressed', String(t === cur));
+      e.ds.textContent = have ? t.kind : `🔒 実績 ${t.need}個`;
+    }
+    $('axisTitle').textContent = `軸コレクション ${SWITCH_TYPES.filter(t => n >= t.need).length} / ${SWITCH_TYPES.length}`;
   }
   function checkAch() {
     const got = ACH.filter(a => !S.ach[a.id] && a.ok());
     if (!got.length) return;
+    const before = achCount();
     for (const a of got) S.ach[a.id] = 1;
+    const after = achCount();
+    const axes = SWITCH_TYPES.filter(t => t.need > before && t.need <= after);
     renderAch();
-    toast('🏆 実績解除: ' + got.map(a => a.name).join('、'));
+    toast('🏆 実績解除: ' + got.map(a => a.name).join('、')
+      + (axes.length ? ' / 🎁 新しい軸: ' + axes.map(t => t.name).join('、') : ''));
     noise(0.25, 2000, 0.3);
     save();
   }
@@ -905,7 +988,7 @@
     el.toast.textContent = msg;
     el.toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.toast.classList.remove('show'), 2600);
+    toastTimer = setTimeout(() => el.toast.classList.remove('show'), 3500);
   }
 
   // ---------- 入力 ----------
@@ -974,6 +1057,7 @@
 
   // ---------- 開始 ----------
   buildShop();
+  buildAxes();
   buildAch();
   if (!(S.hp > 0) || S.hp > maxHp(S.level)) S.hp = maxHp(S.level);
   dressSwitch(false);
