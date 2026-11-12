@@ -165,15 +165,15 @@
     border: 0;
     padding: 0;
     cursor: pointer;
-    width: 240px;
-    height: 270px;
+    width: 264px;
+    height: 240px;
     outline-offset: 6px;
     touch-action: manipulation;
   }
   #switch:focus-visible { outline: 1px dashed var(--line); }
   #switch svg { width: 100%; height: 100%; display: block; overflow: visible; }
-  #moving { transition: transform .06s ease-out; }
-  #switch.down #moving { transform: translateY(15px); transition-duration: .02s; }
+  #switch .mv { transition: transform .06s ease-out; }
+  #switch.down .mv { transform: translateY(15px); transition-duration: .02s; }
   #switch.shake svg { animation: shake .12s linear; }
   #switch.spawn { animation: spawn .22s cubic-bezier(.2, 1.4, .4, 1); }
   @keyframes shake {
@@ -367,68 +367,47 @@
     <div class="arena" id="arena">
       <canvas id="fx"></canvas>
       <button id="switch" type="button" aria-label="キースイッチを叩く">
-        <svg viewBox="0 0 240 270" aria-hidden="true">
+        <svg viewBox="10 70 220 200" aria-hidden="true">
           <defs>
-            <path id="capShape" d="M30 62 Q30 44 48 42 H192 Q210 44 210 62 L218 156 Q219 172 203 172 H37 Q21 172 22 156 Z"/>
+            <!-- 正面から見たキーキャップ。天面は中央がわずかにくぼむ -->
+            <path id="capShape" d="M50 98 Q52 88 63 88 Q120 95 177 88 Q188 88 190 98 L210 167 Q212 176 202 176 H38 Q28 176 30 167 Z"/>
             <linearGradient id="gMilk" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stop-color="#e6f2e6"/><stop offset="1" stop-color="#b4c9b7"/>
             </linearGradient>
             <linearGradient id="gPin" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stop-color="#8a6a1f"/><stop offset=".45" stop-color="#f6e09a"/><stop offset="1" stop-color="#a47f2a"/>
             </linearGradient>
-            <!-- 色の上に重ねる陰影。キーキャップや軸の色が変わってもそのまま使える -->
+            <!-- 色の上に重ねる陰影 -->
             <linearGradient id="gRound" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stop-color="#000" stop-opacity=".38"/><stop offset=".3" stop-color="#fff" stop-opacity=".2"/>
               <stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/>
             </linearGradient>
             <linearGradient id="gSkirt" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".7" stop-color="#000" stop-opacity=".06"/>
-              <stop offset="1" stop-color="#000" stop-opacity=".4"/>
+              <stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset=".12" stop-color="#fff" stop-opacity=".07"/>
+              <stop offset=".7" stop-color="#000" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".4"/>
             </linearGradient>
             <linearGradient id="gSides" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".13" stop-color="#000" stop-opacity="0"/>
               <stop offset=".87" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".36"/>
             </linearGradient>
-            <linearGradient id="gDish" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".5" stop-color="#000" stop-opacity=".08"/>
-              <stop offset="1" stop-color="#fff" stop-opacity=".18"/>
-            </linearGradient>
-            <linearGradient id="gTopV" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/>
-              <stop offset="1" stop-color="#000" stop-opacity=".14"/>
-            </linearGradient>
           </defs>
           <ellipse cx="120" cy="260" rx="98" ry="8" fill="#000" opacity=".45"/>
-          <ellipse id="underglow" cx="120" cy="196" rx="92" ry="20"/>
+          <ellipse id="underglow" cx="120" cy="198" rx="92" ry="20"/>
           <!-- 端子: 固定用の樹脂ピン、中央の柱、金属の足2本 -->
           <rect x="60" y="244" width="8" height="8" rx="3" fill="#b9cdbb"/>
           <rect x="172" y="244" width="8" height="8" rx="3" fill="#b9cdbb"/>
           <rect x="110" y="244" width="20" height="13" rx="5" fill="#c3d6c5"/>
           <rect x="86" y="244" width="5" height="19" rx="1.5" fill="url(#gPin)"/>
           <rect x="147" y="244" width="5" height="15" rx="1.5" fill="url(#gPin)"/>
-          <!-- 動く部分: 軸とキーキャップ -->
-          <g id="moving">
+          <!-- 軸(押すとキーキャップと一緒に下がる) -->
+          <g class="mv">
             <g id="stem" fill="#3d7be0">
               <rect x="101" y="150" width="38" height="52" rx="3"/>
               <rect x="90" y="184" width="60" height="20" rx="3"/>
             </g>
             <rect x="101" y="150" width="38" height="52" rx="3" fill="url(#gRound)"/>
             <rect x="90" y="184" width="60" height="20" rx="3" fill="url(#gRound)"/>
-            <rect x="101" y="172" width="38" height="9" fill="#000" opacity=".3"/>
-            <use href="#capShape" id="capSkirt" fill="#17181c"/>
-            <use href="#capShape" fill="url(#gSkirt)"/>
-            <use href="#capShape" fill="url(#gSides)"/>
-            <rect id="capTop" x="42" y="28" width="156" height="100" rx="17" fill="#2c2d33"/>
-            <rect x="42" y="28" width="156" height="100" rx="17" fill="url(#gDish)" opacity=".45"/>
-            <rect x="42" y="28" width="156" height="100" rx="17" fill="url(#gTopV)" opacity=".6"/>
-            <rect x="42.75" y="28.75" width="154.5" height="98.5" rx="16.5" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="1.5"/>
-            <path d="M45 114 Q47 128 62 128 H178 Q193 128 195 114" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2.5"/>
-            <!-- サイドプリント: 天面は無刻印。手前の側面の刻印がバックライトで光る -->
-            <text id="legend" x="120" y="160" text-anchor="middle" font-size="24" font-weight="500" letter-spacing="1"
-                  font-family="'Helvetica Neue', Arial, system-ui, sans-serif">A</text>
-            <path class="crack" id="crack1" d="M70 34 L88 62 L78 84 L98 104"/>
-            <path class="crack" id="crack2" d="M190 70 L160 82 L150 110 L124 120 L118 150 M150 110 L170 132"/>
-            <path class="crack" id="crack3" d="M40 120 L72 112 L98 104 L112 128 L96 160 M88 62 L120 56 L140 36"/>
+            <rect x="101" y="176" width="38" height="8" fill="#000" opacity=".35"/>
           </g>
           <!-- ばね(透明な上ハウジング越しに見える) -->
           <path d="M106 205 L134 208 L106 211 L134 214 L106 217 L134 220 L106 223" fill="none" stroke="#d8cfae" stroke-width="2" stroke-linejoin="round" opacity=".75"/>
@@ -448,6 +427,21 @@
           <rect x="148" y="228" width="15" height="12" rx="2" fill="#c9dccb" stroke="#a3b8a6" stroke-width="1"/>
           <rect x="76" y="213" width="14" height="10" rx="2" fill="#fff" opacity=".4"/>
           <rect x="150" y="213" width="14" height="10" rx="2" fill="#fff" opacity=".4"/>
+          <!-- キーキャップ: スイッチと同じ正面から見た形で、軸の真上にまっすぐ載る。
+               押し込むと裾が上ハウジングにかぶさるので、ハウジングより手前に描く -->
+          <g class="mv">
+            <use href="#capShape" id="capSkirt" fill="#17181c"/>
+            <use href="#capShape" fill="url(#gSkirt)"/>
+            <use href="#capShape" fill="url(#gSides)"/>
+            <path d="M63 89.5 Q120 96.5 177 89.5" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M36 174.5 H204" stroke="#000" stroke-opacity=".5" stroke-width="2"/>
+            <!-- サイドプリント: 手前の側面の刻印がバックライトで光る -->
+            <text id="legend" x="120" y="147" text-anchor="middle" font-size="30" font-weight="500" letter-spacing="1"
+                  font-family="'Helvetica Neue', Arial, system-ui, sans-serif">A</text>
+            <path class="crack" id="crack1" d="M72 89 L86 110 L78 128 L96 144"/>
+            <path class="crack" id="crack2" d="M198 126 L168 130 L158 150 L134 154 L128 176 M158 150 L176 166"/>
+            <path class="crack" id="crack3" d="M34 152 L66 146 L96 144 L108 160 L98 176 M86 110 L118 106 L136 91"/>
+          </g>
         </svg>
       </button>
     </div>
@@ -627,7 +621,7 @@
     broken: $('broken'), targetName: $('targetName'), targetSub: $('targetSub'),
     hpFill: $('hpFill'), hpText: $('hpText'), hpBar: $('hpBar'),
     arena: $('arena'), sw: $('switch'), fx: $('fx'), shop: $('shop'), toast: $('toast'),
-    stem: $('stem'), capSkirt: $('capSkirt'), capTop: $('capTop'), legend: $('legend'),
+    stem: $('stem'), capSkirt: $('capSkirt'), legend: $('legend'),
     cracks: [$('crack1'), $('crack2'), $('crack3')],
     btnSound: $('btnSound'), btnReset: $('btnReset'),
   };
@@ -831,7 +825,6 @@
     el.stem.setAttribute('fill', stemColor);
     const glow = `hsl(${(200 + kb * 67) % 360} 95% 68%)`; // バックライトの色はキーボードごとに変わる
     capColors = ['#2c2d33', '#17181c', glow];
-    el.capTop.setAttribute('fill', capColors[0]);
     el.capSkirt.setAttribute('fill', capColors[1]);
     setLegend(ORDER[idx]);
     el.targetName.textContent = `「${ORDER[idx]}」キー(${type.name})`;
