@@ -695,13 +695,13 @@
     src.start(a.currentTime + when);
   }
   let lastSnd = 0;
-  function sndHit(crit) {
+  function sndHit() {
     const now = performance.now();
     if (now - lastSnd < 25) return;
     lastSnd = now;
     const s = curType().snd;
-    const v = (crit ? 1.5 : 1) * (0.85 + Math.random() * 0.3);
-    const p = crit ? 0.82 : 1;
+    const v = 0.85 + Math.random() * 0.3;
+    const p = 1;
     const up = s.gap || 0.08;
     if (s.tick) strike(s.tick, 0, v, p);
     strike(s.down, s.tick ? 0.012 : 0, v, p);
@@ -917,7 +917,7 @@
     }
     floatText((crit ? '会心 ' : '') + fmt(dmg), x, y - 20, crit ? 'crit' : '');
     burst(x, y, crit ? 10 : 4, capColors, crit ? 300 : 200, ['chip']);
-    sndHit(crit);
+    sndHit();
     el.sw.classList.add('down');
     el.sw.classList.remove('shake');
     void el.sw.offsetWidth;
@@ -971,7 +971,6 @@
     }
   }
   function bought() {
-    noise(0.08, 1200, 0.2);
     dirty = true;
     render();
     checkAch();
@@ -1075,7 +1074,7 @@
         dressSwitch(true);
         renderAxes();
         lastSnd = 0;
-        sndHit(false); // 選んだ軸の音を試し聞き
+        sndHit(); // 選んだ軸の音を試し聞き
         save();
         if (e.detail > 0) b.blur();
       });
