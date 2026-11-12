@@ -16,7 +16,3 @@
 ## 使い方
 
 `index.html` をブラウザで開くだけで動きます(3D 表示に Three.js を CDN から読み込みます)。
-
-## 謝辞
-
-ファイル形式と表示の考え方は [Origami Simulator](https://origamisimulator.org/)(Amanda Ghassaei)を参考にしています。
