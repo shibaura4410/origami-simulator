@@ -95,9 +95,35 @@
   }
   .rates b { color: var(--text); font-weight: 600; }
 
+  .kbd-wrap { margin-top: 12px; }
+  .kbd-title { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .kbd-title b { color: var(--text); }
+  .kbd {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px;
+    background: #0e1015;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .kbd .row { display: flex; gap: 3px; }
+  .kbd .row:nth-child(2) { padding-left: 9px; }
+  .kbd .row:nth-child(3) { padding-left: 18px; }
+  .kbd .row:nth-child(4) { padding-left: 32px; }
+  .kbd .k {
+    width: 25px; height: 25px;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+    color: #2b2e36;
+    background: var(--kcap, #d5d9e2);
+    border-radius: 5px;
+    box-shadow: 0 2px 0 var(--kskirt, #9aa0ad);
+  }
+  .kbd .k.done { background: #1d1f26; color: #4a4f5c; box-shadow: inset 0 0 0 1px #2a2d36; text-decoration: line-through; }
+  .kbd .k.cur { outline: 2px solid var(--accent); outline-offset: 1px; }
   .target-info { margin-top: 14px; text-align: center; }
   .target-name { font-size: 16px; font-weight: 700; }
-  .target-name.boss { color: var(--bad); }
   .target-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
   .hp {
@@ -145,23 +171,15 @@
     touch-action: manipulation;
   }
   #switch svg { width: 100%; height: 100%; display: block; overflow: visible; }
-  #switch.boss svg { transform: scale(1.18); }
   #moving { transition: transform .06s ease-out; }
   #switch.down #moving { transform: translateY(15px); transition-duration: .02s; }
   #switch.shake svg { animation: shake .12s linear; }
-  #switch.boss.shake svg { animation: shake-boss .12s linear; }
   #switch.spawn { animation: spawn .22s cubic-bezier(.2, 1.4, .4, 1); }
   @keyframes shake {
     0% { transform: translate(0, 0) rotate(0); }
     30% { transform: translate(-3px, 2px) rotate(-1.2deg); }
     65% { transform: translate(3px, 1px) rotate(1deg); }
     100% { transform: translate(0, 0) rotate(0); }
-  }
-  @keyframes shake-boss {
-    0% { transform: scale(1.18) translate(0, 0) rotate(0); }
-    30% { transform: scale(1.18) translate(-3px, 2px) rotate(-1.2deg); }
-    65% { transform: scale(1.18) translate(3px, 1px) rotate(1deg); }
-    100% { transform: scale(1.18) translate(0, 0) rotate(0); }
   }
   @keyframes spawn {
     from { transform: translateY(-50px) scale(.6); opacity: 0; }
@@ -330,6 +348,11 @@
       <span>破壊数 <b id="broken">0</b></span>
     </div>
 
+    <div class="kbd-wrap">
+      <div class="kbd-title" id="kbdTitle"></div>
+      <div class="kbd" id="kbd" aria-hidden="true"></div>
+    </div>
+
     <div class="target-info">
       <div class="target-name" id="targetName"></div>
       <div class="target-sub" id="targetSub"></div>
@@ -378,7 +401,7 @@
 
   <section class="ach" aria-label="実績">
     <h2 id="axisTitle">軸コレクション</h2>
-    <div class="axis-note">最初は青軸だけ。実績を集めると新しい軸が手に入ります。軸を替えて変わるのは打鍵音だけです。</div>
+    <div class="axis-note">最初は青軸だけ。キーボードを1台壊しきるたびに、新しい軸が1つ手に入ります。軸を替えて変わるのは打鍵音だけです。</div>
     <div class="axes" id="axes"></div>
     <h2 id="achTitle">実績</h2>
     <div class="ach-grid" id="achGrid"></div>
@@ -391,22 +414,23 @@
   'use strict';
 
   // ---------- データ ----------
-  // 軸は実績の数で手に入る。違いは見た目の色と打鍵音だけ
+  // 軸は壊しきったキーボードの台数(need)で手に入る。違いは見た目の色と打鍵音だけ
   // snd: f=打鍵音の高さ, dur=長さ, v=音量, tick=クリック音, tone=電子的な響き
   const SWITCH_TYPES = [
     { id: 'blue', name: '青軸', kind: 'クリッキー', color: '#3d7be0', need: 0, snd: { f: 2900, dur: 0.05, v: 0.28, tick: 5200 } },
-    { id: 'red', name: '赤軸', kind: 'リニア', color: '#e0443e', need: 2, snd: { f: 2100, dur: 0.05, v: 0.24 } },
-    { id: 'brown', name: '茶軸', kind: 'タクタイル', color: '#8a5a3c', need: 4, snd: { f: 1700, dur: 0.06, v: 0.26, tick: 900 } },
-    { id: 'black', name: '黒軸', kind: '重めのリニア', color: '#2a2a2e', need: 6, snd: { f: 1200, dur: 0.08, v: 0.34 } },
-    { id: 'silver', name: '銀軸', kind: 'スピード', color: '#c9ced8', need: 8, snd: { f: 3900, dur: 0.025, v: 0.24 } },
-    { id: 'pink', name: '桃軸', kind: '静音', color: '#f09ab8', need: 10, snd: { f: 800, dur: 0.05, v: 0.09 } },
-    { id: 'green', name: '緑軸', kind: '重めのクリッキー', color: '#3fae5a', need: 12, snd: { f: 2300, dur: 0.07, v: 0.34, tick: 4200 } },
-    { id: 'purple', name: '紫軸', kind: '光学式', color: '#8f5fe0', need: 15, snd: { f: 3000, dur: 0.04, v: 0.2, tone: 1800 } },
-    { id: 'gold', name: '金軸', kind: '磁気式', color: '#e0b23d', need: 18, snd: { f: 1500, dur: 0.05, v: 0.2, tone: 1100 } },
-    { id: 'white', name: '白軸', kind: '静電容量無接点', color: '#f2f2f2', need: 21, snd: { f: 620, dur: 0.1, v: 0.4 } },
+    { id: 'red', name: '赤軸', kind: 'リニア', color: '#e0443e', need: 1, snd: { f: 2100, dur: 0.05, v: 0.24 } },
+    { id: 'brown', name: '茶軸', kind: 'タクタイル', color: '#8a5a3c', need: 2, snd: { f: 1700, dur: 0.06, v: 0.26, tick: 900 } },
+    { id: 'black', name: '黒軸', kind: '重めのリニア', color: '#2a2a2e', need: 3, snd: { f: 1200, dur: 0.08, v: 0.34 } },
+    { id: 'silver', name: '銀軸', kind: 'スピード', color: '#c9ced8', need: 4, snd: { f: 3900, dur: 0.025, v: 0.24 } },
+    { id: 'pink', name: '桃軸', kind: '静音', color: '#f09ab8', need: 5, snd: { f: 800, dur: 0.05, v: 0.09 } },
+    { id: 'green', name: '緑軸', kind: '重めのクリッキー', color: '#3fae5a', need: 6, snd: { f: 2300, dur: 0.07, v: 0.34, tick: 4200 } },
+    { id: 'purple', name: '紫軸', kind: '光学式', color: '#8f5fe0', need: 7, snd: { f: 3000, dur: 0.04, v: 0.2, tone: 1800 } },
+    { id: 'gold', name: '金軸', kind: '磁気式', color: '#e0b23d', need: 8, snd: { f: 1500, dur: 0.05, v: 0.2, tone: 1100 } },
+    { id: 'white', name: '白軸', kind: '静電容量無接点', color: '#f2f2f2', need: 9, snd: { f: 620, dur: 0.1, v: 0.4 } },
   ];
-  const BOSS_KEYS = ['Enter', 'Space', 'Shift', 'Tab', 'Ctrl', 'Esc', 'Del', 'Caps'];
-  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  // 1台のキーボードは36キー。A→Z、つづいて 1→0 の順に壊していく
+  const ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+  const KB_ROWS = ['1234567890', 'QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
   // kind: click = 1打の威力, auto = 毎秒ダメージ, crit = 会心率
   const ITEMS = [
@@ -441,12 +465,12 @@
       cost: it.base * TIER_COST[k], need: `${it.name}を${req}個`, req: () => lv(it.id) >= req,
     }));
   }
-  [[1, 5000], [4, 400000], [10, 3e7], [20, 3e9]].forEach(([n, c], k) => UPGRADES.push({
+  [[5, 5000], [20, 400000], [50, 3e7], [100, 3e9]].forEach(([n, c], k) => UPGRADES.push({
     id: 'gclick' + k, ico: '⚒️', group: 'gclick',
     name: '工具の焼き入れ ' + ROMAN[k], desc: 'すべての工具の威力 2倍',
     cost: c, need: `スイッチを${n}個破壊`, req: () => S.broken >= n,
   }));
-  [[2, 20000], [6, 1.5e6], [12, 1e8], [24, 1e10]].forEach(([n, c], k) => UPGRADES.push({
+  [[10, 20000], [30, 1.5e6], [70, 1e8], [140, 1e10]].forEach(([n, c], k) => UPGRADES.push({
     id: 'gauto' + k, ico: '⚡', group: 'gauto',
     name: '過負荷運転 ' + ROMAN[k], desc: 'すべての自動破壊 2倍',
     cost: c, need: `スイッチを${n}個破壊`, req: () => S.broken >= n,
@@ -475,7 +499,9 @@
     { id: 'break1', ico: '🧩', name: '初破壊', desc: '最初のスイッチを壊す', ok: () => S.broken >= 1 },
     { id: 'break10', ico: '🧰', name: '解体屋', desc: 'スイッチを10個壊す', ok: () => S.broken >= 10 },
     { id: 'break30', ico: '🪦', name: 'スイッチの墓場', desc: 'スイッチを30個壊す', ok: () => S.broken >= 30 },
-    { id: 'boss1', ico: '👑', name: '大物食い', desc: '大きなキーを壊す', ok: () => S.bosses >= 1 },
+    { id: 'kb1', ico: '👑', name: '一台まるごと', desc: 'キーボードを1台壊しきる', ok: () => kbCount() >= 1 },
+    { id: 'kb3', ico: '🚮', name: '壊し屋', desc: 'キーボードを3台壊しきる', ok: () => kbCount() >= 3 },
+    { id: 'allaxes', ico: '🌈', name: '軸マニア', desc: 'すべての軸を手に入れる', ok: () => kbCount() >= SWITCH_TYPES.length - 1 },
     { id: 'scrap1k', ico: '🪙', name: '小銭かせぎ', desc: 'スクラップを累計1,000', ok: () => S.total >= 1e3 },
     { id: 'scrap1m', ico: '💰', name: 'スクラップ長者', desc: 'スクラップを累計100万', ok: () => S.total >= 1e6 },
     { id: 'scrap100m', ico: '🏦', name: 'スクラップ王', desc: 'スクラップを累計1億', ok: () => S.total >= 1e8 },
@@ -490,7 +516,7 @@
 
   // ---------- 状態 ----------
   const fresh = () => ({
-    scrap: 0, total: 0, broken: 0, bosses: 0, level: 1, hp: 0,
+    scrap: 0, total: 0, broken: 0, level: 1, hp: 0,
     clicks: 0, crits: 0, keys: 0, fast: false,
     owned: {}, ups: {}, ach: {}, sw: 'blue', sound: true,
   });
@@ -504,8 +530,8 @@
   };
 
   const lv = id => S.owned[id] || 0;
-  const achCount = () => ACH.filter(a => S.ach[a.id]).length;
-  const curType = () => SWITCH_TYPES.find(t => t.id === S.sw && achCount() >= t.need) || SWITCH_TYPES[0];
+  const kbCount = () => Math.floor((S.level - 1) / ORDER.length); // 壊しきったキーボードの台数
+  const curType = () => SWITCH_TYPES.find(t => t.id === S.sw && kbCount() >= t.need) || SWITCH_TYPES[0];
   const cost = it => Math.floor(it.base * Math.pow(it.growth || 1.15, lv(it.id)));
 
   // 強化による倍率。買ったときと読み込んだときに作り直す
@@ -525,8 +551,7 @@
   const clickPower = () => (1 + sumOf('click')) * M.gclick + autoPower() * M.syn;
   const critChance = () => (5 + sumOf('crit')) / 100;
 
-  const isBoss = level => level % 10 === 0;
-  const maxHp = level => Math.floor(1000 * Math.pow(1.3, level - 1)) * (isBoss(level) ? 5 : 1);
+  const maxHp = level => Math.floor(1000 * Math.pow(1.06, level - 1));
 
   const UNITS = ['', '万', '億', '兆', '京', '垓', '𥝱', '穣'];
   function fmt(n) {
@@ -598,8 +623,8 @@
     if (s.tick) noise(0.02, s.tick, s.v * 0.8);
     if (s.tone) tone(s.tone, 0.07, s.v * 0.5);
   }
-  function sndBreak(boss) {
-    noise(boss ? 0.5 : 0.22, boss ? 500 : 900, 0.6);
+  function sndBreak(big) {
+    noise(big ? 0.5 : 0.22, big ? 500 : 900, 0.6);
     noise(0.12, 3200, 0.25);
   }
 
@@ -684,7 +709,6 @@
   // ---------- スイッチ ----------
   let capColors = ['#d5d9e2', '#9aa0ad'];
   let stemColor = '#e0443e';
-  let defaultLegend = 'A';
 
   function setLegend(t) {
     el.legend.textContent = t;
@@ -692,27 +716,45 @@
     el.legend.setAttribute('y', t.length > 1 ? 98 : 103);
   }
 
+  const kbdEls = [];
+  function buildKbd() {
+    const by = {};
+    for (const row of KB_ROWS) {
+      const r = document.createElement('div');
+      r.className = 'row';
+      for (const ch of row) {
+        const k = document.createElement('span');
+        k.className = 'k';
+        k.textContent = ch;
+        r.appendChild(k);
+        by[ch] = k;
+      }
+      $('kbd').appendChild(r);
+    }
+    for (const ch of ORDER) kbdEls.push(by[ch]);
+  }
+
   function dressSwitch(animate) {
     const L = S.level;
-    const boss = isBoss(L);
+    const kb = kbCount();
+    const idx = (L - 1) % ORDER.length;
     const type = curType();
     stemColor = type.color;
     el.stem.setAttribute('fill', stemColor);
-    if (boss) {
-      capColors = ['#ffd27a', '#b8842a'];
-      defaultLegend = BOSS_KEYS[(L / 10 - 1) % BOSS_KEYS.length];
-    } else {
-      const hue = (L * 47) % 360;
-      capColors = [`hsl(${hue} 28% 84%)`, `hsl(${hue} 18% 58%)`];
-      defaultLegend = LETTERS[(L * 7) % LETTERS.length];
-    }
+    const hue = (35 + kb * 67) % 360; // キーキャップの色はキーボードごとに変わる
+    capColors = [`hsl(${hue} 24% 84%)`, `hsl(${hue} 16% 58%)`];
     el.capTop.setAttribute('fill', capColors[0]);
     el.capSkirt.setAttribute('fill', capColors[1]);
-    setLegend(defaultLegend);
-    el.sw.classList.toggle('boss', boss);
-    el.targetName.textContent = boss ? `👑 ${defaultLegend}キー(${type.name})` : `${type.name}スイッチ`;
-    el.targetName.classList.toggle('boss', boss);
-    el.targetSub.textContent = `Lv.${L} ・ ${type.kind}`;
+    setLegend(ORDER[idx]);
+    el.targetName.textContent = `「${ORDER[idx]}」キー(${type.name})`;
+    el.targetSub.textContent = `${type.kind} ・ 通算 ${fmt(L)} 個目`;
+    $('kbd').style.setProperty('--kcap', capColors[0]);
+    $('kbd').style.setProperty('--kskirt', capColors[1]);
+    kbdEls.forEach((k, i) => {
+      k.classList.toggle('done', i < idx);
+      k.classList.toggle('cur', i === idx);
+    });
+    $('kbdTitle').innerHTML = `キーボード <b>${fmt(kb + 1)}</b> 台目 ・ のこり <b>${ORDER.length - idx}</b> / ${ORDER.length} キー`;
     if (animate) {
       el.sw.classList.remove('spawn');
       void el.sw.offsetWidth;
@@ -739,20 +781,24 @@
 
   let lastBreakFx = 0;
   function breakSwitch() {
-    const L = S.level;
-    const boss = isBoss(L);
     S.broken++;
-    if (boss) S.bosses++;
     S.level++;
     S.hp = maxHp(S.level);
+    const done = (S.level - 1) % ORDER.length === 0; // キーボードを1台壊しきった
+    if (done) {
+      const n = kbCount();
+      const got = SWITCH_TYPES.find(t => t.need === n);
+      toast(`🎉 キーボード ${fmt(n)} 台目を壊しきった！` + (got ? ` 🎁 新しい軸: ${got.name}` : ''));
+      renderAxes();
+    }
     const now = performance.now();
-    if (now - lastBreakFx > 90) {
+    if (done || now - lastBreakFx > 90) {
       lastBreakFx = now;
       const c = center();
-      burst(c.x, c.y, boss ? 46 : 22, capColors, boss ? 520 : 380, ['cap', 'chip', 'chip']);
-      burst(c.x, c.y + 40, boss ? 14 : 6, [stemColor, '#2a2d36', '#d9b24a'], 320, ['chip', 'spring']);
-      floatText('破壊！', c.x, c.y - 70, 'gain');
-      sndBreak(boss);
+      burst(c.x, c.y, done ? 60 : 22, capColors, done ? 560 : 380, ['cap', 'chip', 'chip']);
+      burst(c.x, c.y + 40, done ? 18 : 6, [stemColor, '#2a2d36', '#d9b24a'], 320, ['chip', 'spring']);
+      floatText(done ? 'キーボード破壊！' : '破壊！', c.x, c.y - 70, 'gain');
+      sndBreak(done);
       dressSwitch(true);
     } else {
       dressSwitch(false);
@@ -774,7 +820,7 @@
 
   let upTimer = 0;
   let hitTimes = [];
-  function hit(x, y, label) {
+  function hit(x, y) {
     const crit = Math.random() < critChance();
     const dmg = clickPower() * (crit ? M.critMult : 1);
     S.clicks++;
@@ -788,7 +834,6 @@
       x = c.x + (Math.random() - 0.5) * 90;
       y = c.y + (Math.random() - 0.5) * 50;
     }
-    if (label) setLegend(label);
     floatText((crit ? '会心 ' : '') + fmt(dmg), x, y - 20, crit ? 'crit' : '');
     burst(x, y, crit ? 10 : 4, capColors, crit ? 300 : 200, ['chip']);
     sndHit(crit);
@@ -944,7 +989,7 @@
       b.className = 'axis';
       b.innerHTML = `<i style="background:${t.color}"></i><span><div class="nm">${t.name}</div><div class="ds"></div></span>`;
       b.addEventListener('click', e => {
-        if (achCount() < t.need) return;
+        if (kbCount() < t.need) return;
         S.sw = t.id;
         dressSwitch(true);
         renderAxes();
@@ -958,37 +1003,34 @@
     }
   }
   function renderAxes() {
-    const n = achCount();
+    const n = kbCount();
     const cur = curType();
     for (const t of SWITCH_TYPES) {
       const e = axisEls[t.id];
       const have = n >= t.need;
       e.b.disabled = !have;
       e.b.setAttribute('aria-pressed', String(t === cur));
-      e.ds.textContent = have ? t.kind : `🔒 実績 ${t.need}個`;
+      e.ds.textContent = have ? t.kind : `🔒 ${t.need}台破壊`;
     }
     $('axisTitle').textContent = `軸コレクション ${SWITCH_TYPES.filter(t => n >= t.need).length} / ${SWITCH_TYPES.length}`;
   }
   function checkAch() {
     const got = ACH.filter(a => !S.ach[a.id] && a.ok());
     if (!got.length) return;
-    const before = achCount();
     for (const a of got) S.ach[a.id] = 1;
-    const after = achCount();
-    const axes = SWITCH_TYPES.filter(t => t.need > before && t.need <= after);
     renderAch();
-    toast('🏆 実績解除: ' + got.map(a => a.name).join('、')
-      + (axes.length ? ' / 🎁 新しい軸: ' + axes.map(t => t.name).join('、') : ''));
+    toast('🏆 実績解除: ' + got.map(a => a.name).join('、'));
     noise(0.25, 2000, 0.3);
     save();
   }
 
-  let toastTimer = 0;
+  let toastTimer = 0, toastMsgs = [];
   function toast(msg) {
-    el.toast.textContent = msg;
+    toastMsgs = toastMsgs.concat(msg).slice(-2); // 重なったら直近の2件を並べる
+    el.toast.textContent = toastMsgs.join(' / ');
     el.toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.toast.classList.remove('show'), 3500);
+    toastTimer = setTimeout(() => { el.toast.classList.remove('show'); toastMsgs = []; }, 4000);
   }
 
   // ---------- 入力 ----------
@@ -999,7 +1041,6 @@
   });
   el.sw.addEventListener('contextmenu', e => e.preventDefault());
 
-  const KEY_LABELS = { ' ': 'Space', Enter: 'Enter', Backspace: 'BS', Shift: 'Shift', Control: 'Ctrl', Alt: 'Alt' };
   window.addEventListener('keydown', e => {
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Tab' || e.key === 'Escape' || /^F\d+$/.test(e.key)) return;
@@ -1007,10 +1048,8 @@
     const onControl = ae && ae !== el.sw && ae.tagName === 'BUTTON';
     if (onControl && (e.key === 'Enter' || e.key === ' ')) return; // ボタンの操作を優先
     if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace') e.preventDefault();
-    const label = isBoss(S.level) ? null
-      : KEY_LABELS[e.key] || (e.key.length === 1 ? e.key.toUpperCase() : null);
     S.keys++;
-    hit(null, null, label);
+    hit(null, null);
   });
 
   function drawSoundBtn() {
@@ -1057,6 +1096,7 @@
 
   // ---------- 開始 ----------
   buildShop();
+  buildKbd();
   buildAxes();
   buildAch();
   if (!(S.hp > 0) || S.hp > maxHp(S.level)) S.hp = maxHp(S.level);
