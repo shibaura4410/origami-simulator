@@ -185,7 +185,7 @@
     from { transform: translateY(-50px) scale(.6); opacity: 0; }
     to { transform: none; opacity: 1; }
   }
-  .crack { stroke: #17181c; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+  .crack { stroke: #17181c; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; filter: drop-shadow(1px 1.5px 0 #ffffff66); }
   .crack.on { opacity: .85; }
 
   .float {
@@ -366,31 +366,80 @@
       <button id="switch" type="button" aria-label="キースイッチを叩く">
         <svg viewBox="0 0 240 270" aria-hidden="true">
           <defs>
-            <linearGradient id="gHouse" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#4a4f5c"/><stop offset="1" stop-color="#2a2d36"/>
+            <path id="capShape" d="M30 62 Q30 44 48 42 H192 Q210 44 210 62 L218 156 Q219 172 203 172 H37 Q21 172 22 156 Z"/>
+            <linearGradient id="gHouseTop" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#5a5f6e"/><stop offset="1" stop-color="#2b2e37"/>
+            </linearGradient>
+            <linearGradient id="gHouseBot" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2a2c34"/><stop offset="1" stop-color="#101116"/>
+            </linearGradient>
+            <linearGradient id="gPin" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#8a6a1f"/><stop offset=".45" stop-color="#f6e09a"/><stop offset="1" stop-color="#a47f2a"/>
+            </linearGradient>
+            <!-- 色の上に重ねる陰影。キーキャップや軸の色が変わってもそのまま使える -->
+            <linearGradient id="gRound" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#000" stop-opacity=".38"/><stop offset=".3" stop-color="#fff" stop-opacity=".2"/>
+              <stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/>
+            </linearGradient>
+            <linearGradient id="gSkirt" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".7" stop-color="#000" stop-opacity=".06"/>
+              <stop offset="1" stop-color="#000" stop-opacity=".4"/>
+            </linearGradient>
+            <linearGradient id="gSides" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".13" stop-color="#000" stop-opacity="0"/>
+              <stop offset=".87" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".36"/>
+            </linearGradient>
+            <linearGradient id="gDish" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".5" stop-color="#000" stop-opacity=".08"/>
+              <stop offset="1" stop-color="#fff" stop-opacity=".18"/>
+            </linearGradient>
+            <linearGradient id="gTopV" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/>
+              <stop offset="1" stop-color="#000" stop-opacity=".14"/>
             </linearGradient>
           </defs>
-          <ellipse cx="120" cy="258" rx="92" ry="9" fill="#0008"/>
-          <!-- ピン -->
-          <rect x="88" y="244" width="7" height="16" rx="2" fill="#d9b24a"/>
-          <rect x="140" y="244" width="7" height="16" rx="2" fill="#d9b24a"/>
-          <rect x="112" y="244" width="16" height="10" rx="3" fill="#23252c"/>
+          <ellipse cx="120" cy="260" rx="98" ry="8" fill="#000" opacity=".45"/>
+          <!-- 端子: 固定用の樹脂ピン、中央の柱、金属の足2本 -->
+          <rect x="60" y="244" width="8" height="8" rx="3" fill="#191a20"/>
+          <rect x="172" y="244" width="8" height="8" rx="3" fill="#191a20"/>
+          <rect x="110" y="244" width="20" height="13" rx="5" fill="#1b1c22"/>
+          <rect x="86" y="244" width="5" height="19" rx="1.5" fill="url(#gPin)"/>
+          <rect x="147" y="244" width="5" height="15" rx="1.5" fill="url(#gPin)"/>
           <!-- 動く部分: 軸とキーキャップ -->
           <g id="moving">
-            <rect id="stem" x="102" y="150" width="36" height="52" rx="4" fill="#e0443e"/>
-            <rect id="capSkirt" x="28" y="26" width="184" height="140" rx="20" fill="#9aa0ad"/>
-            <rect id="capTop" x="46" y="32" width="148" height="108" rx="15" fill="#d5d9e2"/>
-            <rect x="52" y="36" width="136" height="20" rx="10" fill="#fff" opacity=".28"/>
-            <text id="legend" x="120" y="103" text-anchor="middle" font-size="52" font-weight="800"
-                  font-family="system-ui, sans-serif" fill="#2b2e36">A</text>
+            <g id="stem" fill="#3d7be0">
+              <rect x="101" y="150" width="38" height="52" rx="3"/>
+              <rect x="90" y="184" width="60" height="20" rx="3"/>
+            </g>
+            <rect x="101" y="150" width="38" height="52" rx="3" fill="url(#gRound)"/>
+            <rect x="90" y="184" width="60" height="20" rx="3" fill="url(#gRound)"/>
+            <rect x="101" y="172" width="38" height="9" fill="#000" opacity=".3"/>
+            <use href="#capShape" id="capSkirt" fill="#9aa0ad"/>
+            <use href="#capShape" fill="url(#gSkirt)"/>
+            <use href="#capShape" fill="url(#gSides)"/>
+            <rect id="capTop" x="42" y="28" width="156" height="114" rx="17" fill="#d5d9e2"/>
+            <rect x="42" y="28" width="156" height="114" rx="17" fill="url(#gDish)"/>
+            <rect x="42" y="28" width="156" height="114" rx="17" fill="url(#gTopV)"/>
+            <rect x="42.75" y="28.75" width="154.5" height="112.5" rx="16.5" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="1.5"/>
+            <path d="M45 128 Q47 142 62 142 H178 Q193 142 195 128" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2.5"/>
+            <text id="legend" x="74" y="86" text-anchor="middle" font-size="42" font-weight="700"
+                  font-family="'Helvetica Neue', Arial, system-ui, sans-serif" fill="#23262d" opacity=".88">A</text>
             <path class="crack" id="crack1" d="M70 34 L88 62 L78 84 L98 104"/>
             <path class="crack" id="crack2" d="M190 70 L160 82 L150 110 L124 120 L118 150 M150 110 L170 132"/>
             <path class="crack" id="crack3" d="M40 120 L72 112 L98 104 L112 128 L96 160 M88 62 L120 56 L140 36"/>
           </g>
           <!-- ハウジング -->
-          <path d="M66 186 H174 L196 216 H44 Z" fill="url(#gHouse)" opacity=".94"/>
-          <rect x="40" y="214" width="160" height="34" rx="7" fill="#1d1f26"/>
-          <rect x="40" y="214" width="160" height="6" rx="3" fill="#3a3e4a"/>
+          <path d="M70 188 H170 L188 222 H52 Z" fill="url(#gHouseTop)" opacity=".93"/>
+          <path d="M70 188.75 H170" stroke="#9a9fb0" stroke-opacity=".75" stroke-width="1.5"/>
+          <path d="M74 191 H96 L84 219 H58 Z" fill="#fff" opacity=".07"/>
+          <rect x="102" y="197" width="36" height="12" rx="2" fill="#000" opacity=".28"/>
+          <rect x="110" y="212" width="20" height="6" rx="1.5" fill="#000" opacity=".42"/>
+          <rect x="50" y="226" width="140" height="20" rx="4" fill="url(#gHouseBot)"/>
+          <rect x="50" y="226" width="140" height="20" rx="4" fill="url(#gSides)"/>
+          <rect x="46" y="220" width="148" height="7" rx="2" fill="#3c404c"/>
+          <rect x="46" y="220" width="148" height="2" rx="1" fill="#fff" opacity=".12"/>
+          <rect x="76" y="214" width="14" height="10" rx="2" fill="#4c515f"/>
+          <rect x="150" y="214" width="14" height="10" rx="2" fill="#4c515f"/>
         </svg>
       </button>
     </div>
@@ -710,11 +759,7 @@
   let capColors = ['#d5d9e2', '#9aa0ad'];
   let stemColor = '#e0443e';
 
-  function setLegend(t) {
-    el.legend.textContent = t;
-    el.legend.setAttribute('font-size', t.length > 3 ? 30 : t.length > 1 ? 38 : 52);
-    el.legend.setAttribute('y', t.length > 1 ? 98 : 103);
-  }
+  function setLegend(t) { el.legend.textContent = t; }
 
   const kbdEls = [];
   function buildKbd() {
